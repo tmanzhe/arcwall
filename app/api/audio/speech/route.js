@@ -47,7 +47,7 @@ export async function POST(request) {
         instructions:
           "Speak as a calm, warm, concise creative collaborator. Use a natural conversational pace. Do not imitate a real person or a fictional character.",
       }),
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(45000)]),
     });
     if (!response.ok)
       return Response.json(

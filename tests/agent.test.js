@@ -1,7 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { localCommand, validateEdit } from "../src/agent.js";
+import { localCommand, validateEdit, sceneContext } from "../src/agent.js";
 import { DEFAULT_SCENE, applySceneEdit } from "../src/scene.js";
+test("canvas context keeps scene objects and stroke counts without uploading raw point arrays", () => {
+  const original = {
+    ...DEFAULT_SCENE,
+    strokes: [
+      {
+        color: "#abcdef",
+        points: Array.from({ length: 100 }, () => [0.2, 0.3]),
+      },
+    ],
+  };
+  const context = sceneContext(original);
+  assert.deepEqual(context.strokes, [{ color: "#abcdef", points: [] }]);
+  assert.equal(context.strokes.length, original.strokes.length);
+  assert.equal(original.strokes[0].points.length, 100);
+  assert.equal(context.shapes, original.shapes);
+});
 test("local commands work without claiming to interpret drawings", () => {
   assert.deepEqual(
     localCommand("make the core bigger and turn it amber", DEFAULT_SCENE).edit,

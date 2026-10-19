@@ -61,7 +61,7 @@ export async function POST(request) {
         method: "POST",
         headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
         body: data,
-        signal: AbortSignal.timeout(45000),
+        signal: AbortSignal.any([request.signal, AbortSignal.timeout(45000)]),
       },
     );
     if (!response.ok)

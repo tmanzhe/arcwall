@@ -1,4 +1,28 @@
 const paths = {
+  mic: (
+    <>
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8" />
+    </>
+  ),
+  stop: <rect x="6" y="6" width="12" height="12" rx="2" />,
+  volume: (
+    <>
+      <path d="m11 5-5 4H2v6h4l5 4Z" />
+      <path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" />
+    </>
+  ),
+  muted: (
+    <>
+      <path d="m11 5-5 4H2v6h4l5 4ZM16 9l6 6m0-6-6 6" />
+    </>
+  ),
+  refresh: (
+    <>
+      <path d="M20 7v5h-5M4 17v-5h5" />
+      <path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1" />
+    </>
+  ),
   spark: (
     <>
       <path d="m12 3 2.3 6.7L21 12l-6.7 2.3L12 21l-2.3-6.7L3 12l6.7-2.3Z" />

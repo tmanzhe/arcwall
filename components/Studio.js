@@ -63,6 +63,7 @@ export default function Studio() {
   const [mode, setMode] = useState("draw"),
     [panel, setPanel] = useState("scene"),
     [inspectorOpen, setInspectorOpen] = useState(true),
+    [voiceOpen, setVoiceOpen] = useState(false),
     [focus, setFocus] = useState(false),
     [eraserSize, setEraserSize] = useState(35),
     [clean, setClean] = useState(false),
@@ -506,7 +507,12 @@ export default function Studio() {
           </button>
         </div>
       </header>
-      <main className={inspectorOpen ? "" : "inspector-closed"}>
+      <main
+        className={
+          (inspectorOpen ? "" : "inspector-closed") +
+          (voiceOpen ? " voice-open" : "")
+        }
+      >
         <nav className="navigation-rail" aria-label="Studio panels">
           <div className="rail-top">
             {[
@@ -517,10 +523,13 @@ export default function Studio() {
             ].map(([id, icon, label]) => (
               <button
                 key={id}
-                className={panel === id && inspectorOpen ? "active" : ""}
-                aria-pressed={panel === id && inspectorOpen}
+                className={
+                  panel === id && inspectorOpen && !voiceOpen ? "active" : ""
+                }
+                aria-pressed={panel === id && inspectorOpen && !voiceOpen}
                 onClick={() => {
                   setPanel(id);
+                  setVoiceOpen(false);
                   setInspectorOpen(true);
                 }}
                 title={label}
@@ -529,6 +538,19 @@ export default function Studio() {
                 <span>{label}</span>
               </button>
             ))}
+            <button
+              className={
+                voiceOpen
+                  ? "active assistant-rail-button"
+                  : "assistant-rail-button"
+              }
+              aria-pressed={voiceOpen}
+              title="Talk to Arc assistant"
+              onClick={() => setVoiceOpen((v) => !v)}
+            >
+              <Icon name="mic" size={20} />
+              <span>Assistant</span>
+            </button>
           </div>
           <div className="rail-bottom">
             <button onClick={launch} title="Launch projector">
@@ -547,7 +569,7 @@ export default function Studio() {
             </div>
           </div>
         </nav>
-        <aside className="sidebar" hidden={!inspectorOpen}>
+        <aside className="sidebar" hidden={!inspectorOpen || voiceOpen}>
           <div className="inspector-title">
             <div>
               <span className="eyebrow">INSPECTOR</span>
@@ -1024,6 +1046,9 @@ export default function Studio() {
             )}
           </div>
           <AgentPanel
+            voiceOpen={voiceOpen}
+            onVoiceOpen={() => setVoiceOpen(true)}
+            onVoiceClose={() => setVoiceOpen(false)}
             scene={scene}
             canvas={canvas}
             onEdit={(edit) => {

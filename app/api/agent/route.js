@@ -112,7 +112,7 @@ export async function POST(request) {
         parallel_tool_calls: false,
         max_output_tokens: 1400,
       }),
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(45000)]),
     });
     if (!response.ok)
       return Response.json(

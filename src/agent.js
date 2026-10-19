@@ -1,4 +1,11 @@
 import { PRESETS } from "./scene.js";
+// The snapshot carries the ink. Send stroke counts, not thousands of duplicate coordinates.
+export function sceneContext(scene) {
+  return {
+    ...scene,
+    strokes: scene.strokes.map(({ color }) => ({ color, points: [] })),
+  };
+}
 export const EDIT_RANGES = {
   brightness: [20, 100],
   speed: [0, 200],
