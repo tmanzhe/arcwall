@@ -62,7 +62,16 @@ export class Renderer {
         color,
         interaction.pointer,
       );
-    if (s.arm && !s.board) this.arm(c, 390, 690, t, color, interaction.pointer);
+    if (s.arm && !s.board)
+      this.arm(
+        c,
+        (s.armX / 100) * W,
+        (s.armY / 100) * H,
+        t,
+        color,
+        interaction.pointer,
+        s.armScale / 100,
+      );
     this.shapes(c, s.shapes || []);
     this.ink(c, s.strokes);
     if (interaction.activeStroke) this.ink(c, [interaction.activeStroke]);
@@ -265,9 +274,10 @@ export class Renderer {
     this.text(c, "NEURAL FIELD · STABLE", -86, r * 1.9 + 25, 11, 0.5);
     c.restore();
   }
-  arm(c, x, y, t, color, pointer) {
+  arm(c, x, y, t, color, pointer, scale = 1) {
     c.save();
     c.translate(x, y);
+    c.scale(scale, scale);
     c.strokeStyle = color;
     c.fillStyle = color;
     const a =

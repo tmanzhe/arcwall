@@ -1,5 +1,13 @@
 import { validQuad, IDENTITY_QUAD } from "./geometry.js";
 export const PRESETS = { arc: "#70e4ff", ember: "#ffb964", ghost: "#9dffd4" };
+export const CORNER_LAYOUT = {
+  scale: 68,
+  sphereX: 85,
+  sphereY: 24,
+  armX: 13,
+  armY: 74,
+  armScale: 65,
+};
 export const DEFAULT_SCENE = {
   preset: "arc",
   brightness: 85,
@@ -8,9 +16,7 @@ export const DEFAULT_SCENE = {
   sphere: true,
   arm: true,
   telemetry: true,
-  scale: 100,
-  sphereX: 68,
-  sphereY: 42,
+  ...CORNER_LAYOUT,
   skeleton: true,
   sensitivity: 35,
   ink: "#8defff",
@@ -26,6 +32,9 @@ const ranges = {
   scale: [40, 180],
   sphereX: [10, 90],
   sphereY: [15, 85],
+  armX: [5, 95],
+  armY: [20, 90],
+  armScale: [30, 120],
   sensitivity: [15, 65],
 };
 export function sanitizeScene(raw) {
