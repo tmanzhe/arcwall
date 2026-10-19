@@ -1,4 +1,6 @@
 import { PRESETS } from "./scene.js";
+import { renderArtifact } from "./backgrounds.js";
+import { objectBounds } from "./manipulation.js";
 const TAU = Math.PI * 2;
 export class Renderer {
   constructor(canvas, getScene, getInteraction, onFps = () => {}) {
@@ -72,11 +74,41 @@ export class Renderer {
         interaction.pointer,
         s.armScale / 100,
       );
+    renderArtifact(c, s, t, color, this.brightness);
     this.shapes(c, s.shapes || []);
     this.ink(c, s.strokes);
     if (interaction.activeStroke) this.ink(c, [interaction.activeStroke]);
     if (s.skeleton && interaction.hands)
       this.hands(c, interaction.hands, color);
+    const selected = objectBounds(
+      s,
+      interaction.selected || interaction.hovered,
+    );
+    if (selected) {
+      c.save();
+      c.strokeStyle = interaction.grabbing ? "#f1d2ff" : "#c7b2ff";
+      c.fillStyle = c.strokeStyle;
+      c.globalAlpha = this.brightness * 0.85;
+      c.lineWidth = 1.5;
+      c.setLineDash(interaction.grabbing ? [] : [7, 5]);
+      c.strokeRect(
+        selected.x - 12,
+        selected.y - 12,
+        selected.width + 24,
+        selected.height + 24,
+      );
+      c.setLineDash([]);
+      this.text(
+        c,
+        selected.label.toUpperCase() +
+          (interaction.grabbing ? " / MOVING" : " / GRAB TO MOVE"),
+        selected.x - 12,
+        Math.max(25, selected.y - 24),
+        13,
+        0.8,
+      );
+      c.restore();
+    }
     if (interaction.pointer) {
       const [x, y] = interaction.pointer;
       c.save();

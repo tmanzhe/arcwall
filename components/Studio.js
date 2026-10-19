@@ -19,6 +19,14 @@ import ShapeEditor from "./ShapeEditor";
 import { eraseInk } from "../src/eraser.js";
 import Icon from "./Icon";
 import ProjectionStage from "./ProjectionStage";
+import { BACKGROUNDS, backgroundPatch } from "../src/backgrounds.js";
+import {
+  pickObject,
+  objectBounds,
+  transformObject,
+  removeObject,
+} from "../src/manipulation.js";
+import BackgroundPicker from "./BackgroundPicker";
 
 const CHANNEL = "arcwall-studio-v1";
 function Range({ label, value, min, max, unit = "%", onChange }) {
@@ -61,6 +69,7 @@ export default function Studio() {
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
   const [mode, setMode] = useState("draw"),
+    [selection, setSelection] = useState(null),
     [panel, setPanel] = useState("scene"),
     [inspectorOpen, setInspectorOpen] = useState(true),
     [voiceOpen, setVoiceOpen] = useState(false),
@@ -92,6 +101,9 @@ export default function Studio() {
     toastTimer = useRef(null),
     alive = useRef(true);
   const help = useRef(null);
+  const grab = useRef(null),
+    selectionRef = useRef(selection);
+  selectionRef.current = selection;
   const erasing = useRef(false),
     lastErase = useRef(null),
     eraserSizeRef = useRef(eraserSize);
@@ -128,6 +140,56 @@ export default function Studio() {
     stroke.current = null;
     interaction.current.activeStroke = null;
   }, [remember]);
+  const manipulate = useCallback(
+    (point, pressed, span = null) => {
+      interaction.current.pointer = point;
+      interaction.current.pinching = pressed;
+      interaction.current.eraser = null;
+      if (!point) {
+        grab.current = null;
+        interaction.current.grabbing = false;
+        interaction.current.hovered = null;
+        return;
+      }
+      const hovered = pickObject(sceneRef.current, point);
+      interaction.current.hovered = hovered;
+      if (!pressed) {
+        grab.current = null;
+        interaction.current.grabbing = false;
+        return;
+      }
+      const kind = span !== null ? "resize" : "move";
+      if (!grab.current || grab.current.kind !== kind) {
+        const target = span !== null ? selectionRef.current : hovered;
+        if (!target || !objectBounds(sceneRef.current, target)) return;
+        remember();
+        grab.current = {
+          kind,
+          target,
+          anchor: point,
+          span,
+          base: sceneRef.current,
+        };
+        setSelection(target);
+        selectionRef.current = target;
+        interaction.current.selected = target;
+      }
+      const active = grab.current;
+      if (!active) return;
+      interaction.current.grabbing = true;
+      setScene((current) =>
+        transformObject(
+          current,
+          active.base,
+          active.target,
+          point[0] - active.anchor[0],
+          point[1] - active.anchor[1],
+          span !== null ? span / Math.max(active.span, 0.03) : 1,
+        ),
+      );
+    },
+    [remember],
+  );
   const trace = useCallback(
     (point, drawing) => {
       interaction.current.pointer = point;
@@ -260,6 +322,21 @@ export default function Studio() {
   useEffect(() => {
     interaction.current.eraser = mode === "erase" ? eraserSize : null;
   }, [mode, eraserSize]);
+  useEffect(() => {
+    interaction.current.selected = mode === "interact" ? selection : null;
+    if (mode !== "interact") {
+      grab.current = null;
+      interaction.current.hovered = null;
+      interaction.current.grabbing = false;
+    }
+  }, [mode, selection]);
+  useEffect(() => {
+    if (selection && !objectBounds(scene, selection)) {
+      setSelection(null);
+      interaction.current.selected = null;
+      grab.current = null;
+    }
+  }, [scene, selection]);
   const fullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement)
@@ -286,6 +363,20 @@ export default function Studio() {
       if (key === "m") setMode("map");
       if (key === "d") setMode("draw");
       if (key === "e") setMode("erase");
+      if (key === "v") {
+        finishStroke();
+        grab.current = null;
+        setMode("interact");
+      }
+      if ((key === "delete" || key === "backspace") && selectionRef.current) {
+        e.preventDefault();
+        remember();
+        const target = selectionRef.current;
+        setScene((s) => removeObject(s, target));
+        setSelection(null);
+        interaction.current.selected = null;
+        grab.current = null;
+      }
       if (key === "b") {
         setFocus((v) => !v);
         patch({ board: !sceneRef.current.board });
@@ -302,7 +393,7 @@ export default function Studio() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [fullscreen, patch, undo]);
+  }, [fullscreen, patch, undo, finishStroke, remember]);
   function screenPoint(e) {
     const rect = stage.current.getBoundingClientRect();
     return [
@@ -341,7 +432,8 @@ export default function Studio() {
       }
     } else {
       pointerDown.current = true;
-      trace(canvasPoint(e), true);
+      if (mode === "interact") manipulate(canvasPoint(e), true);
+      else trace(canvasPoint(e), true);
     }
   }
   function move(e) {
@@ -350,7 +442,9 @@ export default function Studio() {
       const q = sceneRef.current.quad.map((p) => [...p]);
       q[corner.current] = screenPoint(e);
       if (validQuad(q)) patch({ quad: q });
-    } else if (mode === "draw" || mode === "erase")
+    } else if (mode === "interact")
+      manipulate(canvasPoint(e), pointerDown.current);
+    else if (mode === "draw" || mode === "erase")
       trace(canvasPoint(e), pointerDown.current);
   }
   function up() {
@@ -359,6 +453,8 @@ export default function Studio() {
     erasing.current = false;
     lastErase.current = null;
     finishStroke();
+    grab.current = null;
+    interaction.current.grabbing = false;
     interaction.current.pinching = false;
   }
   async function toggleCamera() {
@@ -380,15 +476,32 @@ export default function Studio() {
         (results) => {
           if (!alive.current) return;
           interaction.current.hands = results.hands;
-          setGesture(results.gesture);
-          if (results.pointer && ["draw", "erase"].includes(modeRef.current))
+          if (pointerDown.current) return;
+          setGesture(
+            modeRef.current === "interact"
+              ? results.span !== null && selectionRef.current
+                ? "SPREAD / RESIZE"
+                : results.pinching
+                  ? "PINCH / GRAB"
+                  : "POINT AT AN OBJECT"
+              : results.gesture,
+          );
+          if (modeRef.current === "interact") {
+            if (results.span !== null && selectionRef.current)
+              manipulate(results.center, true, results.span);
+            else manipulate(results.pointer, results.pinching);
+          } else if (
+            results.pointer &&
+            ["draw", "erase"].includes(modeRef.current)
+          )
             trace(results.pointer, results.pinching);
           else {
             finishStroke();
+            erasing.current = false;
+            lastErase.current = null;
             interaction.current.pointer = results.pointer;
             interaction.current.pinching = false;
           }
-          if (results.scale !== null) patch({ scale: results.scale });
         },
         () => sceneRef.current,
         (error) => {
@@ -402,7 +515,12 @@ export default function Studio() {
       );
       vision.current = controller;
       await controller.start();
-      if (alive.current) setCameraState("on");
+      if (alive.current) {
+        setCameraState("on");
+        finishStroke();
+        setMode("interact");
+        notify("Point at an object, pinch to grab it, and release to drop.");
+      }
     } catch (error) {
       vision.current?.stop();
       vision.current = null;
@@ -458,6 +576,8 @@ export default function Studio() {
     erasing.current = false;
     lastErase.current = null;
     setMode(next);
+    grab.current = null;
+    interaction.current.grabbing = false;
   }
   function cornerLayout() {
     remember();
@@ -597,6 +717,16 @@ export default function Studio() {
               <p className="panel-description">
                 A little atmosphere. A lot of possibility.
               </p>
+              <Section number="" title="Background scenes" status="6 SCENES">
+                <BackgroundPicker
+                  value={scene.background}
+                  onChange={(id) => {
+                    remember();
+                    patch(backgroundPatch(id));
+                    setSelection(null);
+                  }}
+                />
+              </Section>
               <Section number="" title="Appearance" status="">
                 <div className="presets">
                   {Object.entries(PRESETS).map(([name, color]) => (
@@ -631,13 +761,14 @@ export default function Studio() {
                   onChange={(v) => update("speed", v)}
                 />
               </Section>
-              <Section number="" title="Scene layers" status="4 LAYERS">
+              <Section number="" title="Scene layers" status="">
                 <div className="toggle-row">
                   {[
                     ["grid", "Spatial grid"],
                     ["sphere", "Reactor core"],
                     ["arm", "Robot arm"],
                     ["telemetry", "Telemetry"],
+                    ["hologram", "Background model"],
                   ].map(([key, label]) => (
                     <label key={key}>
                       <input
@@ -650,6 +781,30 @@ export default function Studio() {
                   ))}
                 </div>
               </Section>
+              {["guardian", "kinetic", "orbital", "constellation"].includes(
+                scene.background,
+              ) && (
+                <Section
+                  number=""
+                  title="Background model"
+                  status="DRAG TO MOVE"
+                >
+                  <Range
+                    label="Model size"
+                    value={scene.artifactScale}
+                    min={40}
+                    max={180}
+                    onChange={(v) => update("artifactScale", v)}
+                  />
+                  <button
+                    className="wide"
+                    onClick={() => chooseTool("interact")}
+                  >
+                    <Icon name="cursor" size={15} />
+                    Move the model on canvas
+                  </button>
+                </Section>
+              )}
               <div className="layout-callout">
                 <Icon name="corners" size={19} />
                 <div>
@@ -733,6 +888,27 @@ export default function Studio() {
                       : "OFFLINE"
                 }
               >
+                <div className="input-mode-switch">
+                  <button
+                    className={cameraState === "off" ? "selected" : ""}
+                    onClick={() => {
+                      if (vision.current) toggleCamera();
+                    }}
+                  >
+                    <Icon name="cursor" size={14} />
+                    Mouse
+                  </button>
+                  <button
+                    className={cameraState === "on" ? "selected" : ""}
+                    disabled={cameraState === "loading"}
+                    onClick={() => {
+                      if (cameraState === "off") toggleCamera();
+                    }}
+                  >
+                    <Icon name="hand" size={14} />
+                    Hands
+                  </button>
+                </div>
                 <button
                   onClick={toggleCamera}
                   disabled={cameraState === "loading"}
@@ -761,15 +937,15 @@ export default function Studio() {
                   <div>
                     <span>02</span>
                     <p>
-                      <strong>Pinch to create</strong>Draw or erase with your
-                      selected tool.
+                      <strong>Pinch to grab</strong>In Interact mode, hold a
+                      pinch and move an object. Release to drop it.
                     </p>
                   </div>
                   <div>
                     <span>03</span>
                     <p>
-                      <strong>Spread to resize</strong>Two open hands control
-                      the reactor.
+                      <strong>Spread to resize</strong>Select an object first,
+                      then spread two open hands to resize it.
                     </p>
                   </div>
                 </div>
@@ -779,7 +955,7 @@ export default function Studio() {
                     checked={scene.skeleton}
                     onChange={(e) => update("skeleton", e.target.checked)}
                   />
-                  Project hand skeleton
+                  Show my hand on the projection
                 </label>
                 <Range
                   label="Pinch sensitivity"
@@ -930,11 +1106,13 @@ export default function Studio() {
               <span className="canvas-label-dot" />
               {mode === "map"
                 ? "ALIGN SURFACE"
-                : mode === "erase"
-                  ? "ERASER ACTIVE"
-                  : scene.board
-                    ? "OPEN CANVAS"
-                    : "LIVE PROJECTION"}
+                : mode === "interact"
+                  ? "POINT · GRAB · MOVE"
+                  : mode === "erase"
+                    ? "ERASER ACTIVE"
+                    : scene.board
+                      ? "OPEN CANVAS"
+                      : "LIVE PROJECTION"}
               <span>1920 × 1080</span>
             </div>
             <div className="viewport-actions">
@@ -959,6 +1137,15 @@ export default function Studio() {
             </div>
             <div className="tools" role="toolbar" aria-label="Drawing tools">
               <div className="tool-group">
+                <button
+                  className={mode === "interact" ? "selected" : ""}
+                  onClick={() => chooseTool("interact")}
+                  title="Interact: drag or pinch to move (V)"
+                  aria-pressed={mode === "interact"}
+                >
+                  <Icon name="cursor" size={16} />
+                  <span>Interact</span>
+                </button>
                 <button
                   className={mode === "draw" ? "selected" : ""}
                   onClick={() => chooseTool("draw")}
@@ -1037,6 +1224,25 @@ export default function Studio() {
                 <Icon name={focus ? "collapse" : "expand"} size={17} />
               </button>
             </div>
+            {mode === "interact" && (
+              <div className="interaction-tip">
+                <Icon name="cursor" size={13} />
+                {selection
+                  ? `${objectBounds(scene, selection)?.label || "Object"} selected · drag to move · two hands to resize`
+                  : cameraState === "on"
+                    ? "Point at an object. Pinch, move, release."
+                    : "Drag a model, shape, or ink stroke to move it."}
+                <button
+                  onClick={() => {
+                    setPanel("vision");
+                    setInspectorOpen(true);
+                    setVoiceOpen(false);
+                  }}
+                >
+                  {cameraState === "on" ? "Hand settings" : "Enable hands"}
+                </button>
+              </div>
+            )}
             {mode === "map" && (
               <div className="mapping-tip">
                 <Icon name="map" size={15} />

@@ -17,6 +17,8 @@ export class GestureInterpreter {
         pointer: null,
         pinching: false,
         scale: null,
+        span: null,
+        center: null,
         gesture: "Looking for hands…",
       };
     }
@@ -30,6 +32,8 @@ export class GestureInterpreter {
       ? this.pointer.map((v, i) => v + (target[i] - v) * 0.4)
       : target;
     let scale = null,
+      span = null,
+      center = null,
       gesture = this.pinching ? "PINCH / DRAW" : "POINT / AIM";
     if (hands.length === 2) {
       const palms = hands.map((h) => Math.max(distance(h[0], h[9]), 0.03));
@@ -39,7 +43,8 @@ export class GestureInterpreter {
           distance(h[0], h[12]) > palms[i] * 1.35,
       );
       if (open) {
-        const span = distance(hands[0][9], hands[1][9]);
+        span = distance(hands[0][9], hands[1][9]);
+        center = hands[0][9].map((v, i) => (v + hands[1][9][i]) / 2);
         if (!this.scaleBaseline)
           this.scaleBaseline = {
             span: Math.max(span, 0.05),
@@ -59,6 +64,8 @@ export class GestureInterpreter {
       pointer: this.pointer.map((v) => clamp(v, 0, 1)),
       pinching: this.pinching,
       scale,
+      span,
+      center,
       gesture,
     };
   }

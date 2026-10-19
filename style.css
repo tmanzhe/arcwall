@@ -2099,3 +2099,200 @@ body.focus .voice-drawer {
     animation: none !important;
   }
 }
+.background-gallery {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.background-gallery > button {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  gap: 0;
+  text-align: left;
+  overflow: hidden;
+  border-radius: 9px;
+  background: #0f1016;
+  border-color: #c3a4f614;
+  position: relative;
+}
+.background-gallery > button.active {
+  border-color: #c3a4f65c;
+  box-shadow: 0 0 0 1px #c3a4f609;
+  background: #c3a4f606;
+}
+.background-gallery > button > span:last-of-type {
+  padding: 9px 8px;
+  display: block;
+}
+.background-gallery strong {
+  font-size: 9px;
+  font-weight: 500;
+  color: #c9bfda;
+  display: block;
+}
+.background-gallery small {
+  font-size: 7px;
+  line-height: 1.65;
+  color: #796c8a;
+  display: block;
+  margin-top: 4px;
+}
+.background-gallery > button > svg {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: #d9c5fc;
+  background: #291c3e;
+  border-radius: 50%;
+  padding: 2px;
+  width: 14px;
+  height: 14px;
+}
+.background-thumbnail {
+  height: 63px;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at center, #70c5f324, #050913 75%);
+  color: #89d8ff;
+  position: relative;
+  overflow: hidden;
+}
+.background-thumbnail > svg {
+  z-index: 1;
+  stroke-width: 1;
+  filter: drop-shadow(0 0 7px #89d8ff55);
+}
+.background-thumbnail i {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  border: 1px solid #89d8ff35;
+  border-radius: 50%;
+  transform: rotate(-30deg) scaleY(0.5);
+}
+.background-thumbnail i:last-child {
+  transform: rotate(45deg) scaleY(0.6);
+  width: 60px;
+  height: 60px;
+}
+.bg-guardian {
+  color: #ccafff;
+  background: radial-gradient(ellipse at center, #c394ff26, #080510 80%);
+}
+.bg-guardian i {
+  border-color: #ccafff3b;
+  width: 54px;
+  height: 54px;
+  transform: none;
+}
+.bg-guardian i:last-child {
+  width: 64px;
+  height: 64px;
+  transform: none;
+  border-style: dashed;
+}
+.bg-kinetic {
+  color: #90f4d1;
+  background:
+    linear-gradient(#071612ee, #071612ee),
+    repeating-linear-gradient(90deg, #80d8bb44 0 1px, transparent 1px 12px);
+}
+.bg-kinetic i {
+  border-color: #80e4bb2b;
+}
+.bg-orbital > svg {
+  opacity: 0.5;
+}
+.bg-orbital i {
+  width: 66px;
+  height: 66px;
+  border-color: #f4c79777;
+}
+.bg-orbital {
+  color: #f4c797;
+  background: radial-gradient(ellipse, #e6b36e21, #090810 80%);
+}
+.bg-constellation {
+  background:
+    radial-gradient(circle at 20% 20%, #b69cff 0 1px, transparent 2px),
+    radial-gradient(circle at 80% 70%, #b69cff 0 2px, transparent 3px),
+    radial-gradient(circle at 65% 30%, #b69cff 0 1px, transparent 2px), #080711;
+}
+.bg-grid {
+  background:
+    repeating-linear-gradient(0deg, transparent 0 14px, #7dbddf13 14px 15px),
+    repeating-linear-gradient(90deg, #050a10 0 14px, #7dbddf13 14px 15px);
+}
+.bg-grid > i {
+  display: none;
+}
+.input-mode-switch {
+  display: flex;
+  padding: 3px;
+  border: 1px solid #c3a4f619;
+  border-radius: 8px;
+  background: #0f0c14;
+  gap: 4px;
+  margin-bottom: 13px;
+}
+.input-mode-switch button {
+  flex: 1;
+  padding: 8px;
+  font-size: 10px;
+  border: 0;
+  background: transparent;
+}
+.input-mode-switch button.selected {
+  background: #c3a4f61b;
+  color: #dbc7fc;
+}
+.interaction-tip {
+  position: absolute;
+  top: 49px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 8px;
+  color: #a393bc;
+  background: #191324d9;
+  border: 1px solid #c3a4f61c;
+  border-radius: 6px;
+  padding: 7px 8px;
+  z-index: 3;
+  max-width: calc(100% - 32px);
+  backdrop-filter: blur(12px);
+}
+.interaction-tip button {
+  font-size: 8px;
+  padding: 3px 6px;
+  border: 0;
+  color: #d1b1fc;
+  background: #c3a4f60d;
+  margin-left: 5px;
+}
+.clean .interaction-tip {
+  display: none;
+}
+@media (max-width: 600px) {
+  .tools .tool-group > button > span {
+    display: none;
+  }
+  .interaction-tip {
+    font-size: 7px;
+    line-height: 1.7;
+    left: 9px;
+    top: 45px;
+    max-width: calc(100% - 18px);
+    gap: 4px;
+  }
+  .interaction-tip > svg {
+    display: none;
+  }
+  .interaction-tip button {
+    font-size: 7px;
+    white-space: nowrap;
+  }
+}

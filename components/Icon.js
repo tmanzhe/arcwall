@@ -1,4 +1,12 @@
 const paths = {
+  cursor: <path d="m4 3 6 17 3-7 7-3Z" />,
+  image: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <circle cx="8" cy="8" r="1.5" />
+      <path d="m3 17 6-6 4 4 3-3 5 5" />
+    </>
+  ),
   mic: (
     <>
       <rect x="9" y="2" width="6" height="12" rx="3" />

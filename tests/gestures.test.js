@@ -33,6 +33,8 @@ test("tracking loss ends a stroke and resets the pointer", () => {
     pointer: null,
     pinching: false,
     scale: null,
+    span: null,
+    center: null,
     gesture: "Looking for hands…",
   });
 });

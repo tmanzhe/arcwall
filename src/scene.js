@@ -1,4 +1,5 @@
 import { validQuad, IDENTITY_QUAD } from "./geometry.js";
+import { BACKGROUNDS } from "./backgrounds.js";
 export const PRESETS = { arc: "#70e4ff", ember: "#ffb964", ghost: "#9dffd4" };
 export const CORNER_LAYOUT = {
   scale: 68,
@@ -22,6 +23,11 @@ export const DEFAULT_SCENE = {
   ink: "#8defff",
   paused: false,
   board: false,
+  background: "arc",
+  hologram: true,
+  artifactX: 50,
+  artifactY: 44,
+  artifactScale: 100,
   quad: IDENTITY_QUAD,
   strokes: [],
   shapes: [],
@@ -36,11 +42,15 @@ const ranges = {
   armY: [20, 90],
   armScale: [30, 120],
   sensitivity: [15, 65],
+  artifactX: [10, 90],
+  artifactY: [15, 85],
+  artifactScale: [40, 180],
 };
 export function sanitizeScene(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw))
     throw new Error("Invalid scene file.");
   const s = { ...DEFAULT_SCENE };
+  if (Object.hasOwn(BACKGROUNDS, raw.background)) s.background = raw.background;
   if (Object.hasOwn(PRESETS, raw.preset)) s.preset = raw.preset;
   for (const [k, [lo, hi]] of Object.entries(ranges))
     if (Number.isFinite(raw[k])) s[k] = Math.max(lo, Math.min(hi, raw[k]));
@@ -52,6 +62,7 @@ export function sanitizeScene(raw) {
     "skeleton",
     "paused",
     "board",
+    "hologram",
   ])
     if (typeof raw[k] === "boolean") s[k] = raw[k];
   if (/^#[\da-f]{6}$/i.test(raw.ink)) s.ink = raw.ink;
