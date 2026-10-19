@@ -631,8 +631,8 @@ export default function Studio() {
               <div className="layout-callout">
                 <Icon name="corners" size={19} />
                 <div>
-                  <strong>Leave room for ideas.</strong>
-                  <p>Keep holograms at the edges.</p>
+                  <strong>Corner layout</strong>
+                  <p>Clear the middle for drawing.</p>
                 </div>
                 <button
                   className="icon-button"

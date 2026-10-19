@@ -74,6 +74,9 @@ test("identity produces a CSS identity matrix at any viewport", () =>
 test("import sanitization limits untrusted geometry and preserves valid ink", () => {
   const s = sanitizeScene({
     scale: 900,
+    armX: -400,
+    armY: 900,
+    armScale: 900,
     preset: "__proto__",
     sphere: "yes",
     quad: [[0, 0]],
@@ -90,6 +93,9 @@ test("import sanitization limits untrusted geometry and preserves valid ink", ()
     ],
   });
   assert.equal(s.scale, 180);
+  assert.equal(s.armX, 5);
+  assert.equal(s.armY, 90);
+  assert.equal(s.armScale, 120);
   assert.equal(s.preset, "arc");
   assert.equal(s.sphere, true);
   assert.equal(s.ink, DEFAULT_SCENE.ink);
