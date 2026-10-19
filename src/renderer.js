@@ -1,6 +1,7 @@
 import { PRESETS } from "./scene.js";
 import { renderArtifact } from "./backgrounds.js";
 import { objectBounds } from "./manipulation.js";
+import { ImageMappingRenderer } from "./image-mapping.js";
 const TAU = Math.PI * 2;
 export class Renderer {
   constructor(canvas, getScene, getInteraction, onFps = () => {}) {
@@ -10,6 +11,7 @@ export class Renderer {
     this.getInteraction = getInteraction;
     this.onFps = onFps;
     this.time = 0;
+    this.imageMapping = new ImageMappingRenderer();
     this.last = 0;
     this.frames = 0;
     this.fpsTime = 0;
@@ -52,6 +54,13 @@ export class Renderer {
     c.strokeStyle = color;
     c.fillStyle = color;
     c.lineWidth = 1;
+    if (s.workspace === "mapping") {
+      this.imageMapping.render(c, s, interaction, t);
+      if (s.skeleton && interaction.hands)
+        this.hands(c, interaction.hands, color);
+      c.restore();
+      return;
+    }
     if (s.grid) this.grid(c, t, color);
     if (s.telemetry && !s.board) this.telemetry(c, t, color, interaction);
     if (s.sphere && !s.board)
@@ -82,7 +91,9 @@ export class Renderer {
       this.hands(c, interaction.hands, color);
     const selected = objectBounds(
       s,
-      interaction.selected || interaction.hovered,
+      interaction.grabbing
+        ? interaction.selected
+        : interaction.hovered || interaction.selected,
     );
     if (selected) {
       c.save();

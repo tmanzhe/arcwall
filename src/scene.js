@@ -1,5 +1,6 @@
 import { validQuad, IDENTITY_QUAD } from "./geometry.js";
 import { BACKGROUNDS } from "./backgrounds.js";
+import { DEFAULT_MAPPING, sanitizeMapping } from "./image-mapping.js";
 export const PRESETS = { arc: "#70e4ff", ember: "#ffb964", ghost: "#9dffd4" };
 export const CORNER_LAYOUT = {
   scale: 68,
@@ -31,6 +32,8 @@ export const DEFAULT_SCENE = {
   quad: IDENTITY_QUAD,
   strokes: [],
   shapes: [],
+  workspace: "studio",
+  mapping: DEFAULT_MAPPING,
 };
 const ranges = {
   brightness: [20, 100],
@@ -50,6 +53,8 @@ export function sanitizeScene(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw))
     throw new Error("Invalid scene file.");
   const s = { ...DEFAULT_SCENE };
+  if (raw.workspace === "mapping") s.workspace = "mapping";
+  s.mapping = sanitizeMapping(raw.mapping);
   if (Object.hasOwn(BACKGROUNDS, raw.background)) s.background = raw.background;
   if (Object.hasOwn(PRESETS, raw.preset)) s.preset = raw.preset;
   for (const [k, [lo, hi]] of Object.entries(ranges))

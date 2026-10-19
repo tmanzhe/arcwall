@@ -27,6 +27,7 @@ import {
   removeObject,
 } from "../src/manipulation.js";
 import BackgroundPicker from "./BackgroundPicker";
+import MappingPanel from "./MappingPanel";
 
 const CHANNEL = "arcwall-studio-v1";
 function Range({ label, value, min, max, unit = "%", onChange }) {
@@ -360,9 +361,18 @@ export default function Studio() {
       const key = e.key.toLowerCase();
       if (key === "h") setClean((v) => !v);
       if (key === "f") fullscreen();
-      if (key === "m") setMode("map");
-      if (key === "d") setMode("draw");
-      if (key === "e") setMode("erase");
+      if (key === "m") {
+        finishStroke();
+        setMode("map");
+      }
+      if (key === "d" && sceneRef.current.workspace === "studio") {
+        finishStroke();
+        setMode("draw");
+      }
+      if (key === "e" && sceneRef.current.workspace === "studio") {
+        finishStroke();
+        setMode("erase");
+      }
       if (key === "v") {
         finishStroke();
         grab.current = null;
@@ -377,7 +387,7 @@ export default function Studio() {
         interaction.current.selected = null;
         grab.current = null;
       }
-      if (key === "b") {
+      if (key === "b" && sceneRef.current.workspace === "studio") {
         setFocus((v) => !v);
         patch({ board: !sceneRef.current.board });
       }
@@ -598,6 +608,16 @@ export default function Studio() {
     patch({ strokes: [], shapes: [] });
     notify("Board cleared. Press Z to undo.");
   }
+  function switchWorkspace(workspace) {
+    finishStroke();
+    grab.current = null;
+    setSelection(null);
+    patch({ workspace });
+    setPanel(workspace === "mapping" ? "mapping" : "scene");
+    setInspectorOpen(true);
+    setVoiceOpen(false);
+    setMode("interact");
+  }
   return (
     <>
       <header className="app-header">
@@ -614,6 +634,22 @@ export default function Studio() {
             <span className="live-dot" />
             Local
           </span>
+        </div>
+        <div className="workspace-switch" aria-label="Workspace">
+          <button
+            className={scene.workspace === "studio" ? "selected" : ""}
+            onClick={() => switchWorkspace("studio")}
+          >
+            <Icon name="layers" size={13} />
+            Studio
+          </button>
+          <button
+            className={scene.workspace === "mapping" ? "selected" : ""}
+            onClick={() => switchWorkspace("mapping")}
+          >
+            <Icon name="image" size={13} />
+            Mapping
+          </button>
         </div>
         <div className="header-right">
           <button className="header-save" onClick={saveScene}>
@@ -637,6 +673,7 @@ export default function Studio() {
           <div className="rail-top">
             {[
               ["scene", "layers", "Scene"],
+              ["mapping", "image", "Mapping"],
               ["vision", "hand", "Vision"],
               ["objects", "shapes", "Objects"],
               ["setup", "settings", "Setup"],
@@ -649,6 +686,12 @@ export default function Studio() {
                 aria-pressed={panel === id && inspectorOpen && !voiceOpen}
                 onClick={() => {
                   setPanel(id);
+                  if (id === "mapping") switchWorkspace("mapping");
+                  else if (
+                    ["scene", "objects"].includes(id) &&
+                    scene.workspace === "mapping"
+                  )
+                    patch({ workspace: "studio" });
                   setVoiceOpen(false);
                   setInspectorOpen(true);
                 }}
@@ -700,6 +743,7 @@ export default function Studio() {
                     vision: "Vision controls",
                     objects: "Objects",
                     setup: "Workspace",
+                    mapping: "Image mapping",
                   }[panel]
                 }
               </h2>
@@ -713,6 +757,16 @@ export default function Studio() {
             </button>
           </div>
           <div className="inspector-scroll">
+            <div className="inspector-pane" hidden={panel !== "mapping"}>
+              <MappingPanel
+                mapping={scene.mapping}
+                notify={notify}
+                onChange={(mapping) => {
+                  remember();
+                  patch({ mapping });
+                }}
+              />
+            </div>
             <div className="inspector-pane" hidden={panel !== "scene"}>
               <p className="panel-description">
                 A little atmosphere. A lot of possibility.
@@ -1047,26 +1101,50 @@ export default function Studio() {
             <div className="workspace-title">
               <div className="eyebrow">YOUR CREATIVE SPACE</div>
               <h1>
-                {scene.board ? "Drawing board" : "Spatial canvas"}
+                {scene.workspace === "mapping"
+                  ? "Image mapping"
+                  : scene.board
+                    ? "Drawing board"
+                    : "Spatial canvas"}
                 <span className="title-dot">.</span>
               </h1>
             </div>
-            <div className="view-switch" aria-label="Canvas view">
-              <button
-                className={!scene.board ? "selected" : ""}
-                onClick={() => update("board", false)}
-              >
-                <Icon name="layers" size={14} />
-                Studio
-              </button>
-              <button
-                className={scene.board ? "selected" : ""}
-                onClick={() => update("board", true)}
-              >
-                <Icon name="board" size={14} />
-                Drawing board
-              </button>
-            </div>
+            {scene.workspace === "mapping" ? (
+              <div className="view-switch" aria-label="Mapping view">
+                {[
+                  ["particles", "Pixels"],
+                  ["depth", "Depth"],
+                  ["image", "Image"],
+                ].map(([id, label]) => (
+                  <button
+                    key={id}
+                    className={scene.mapping.view === id ? "selected" : ""}
+                    onClick={() =>
+                      patch({ mapping: { ...scene.mapping, view: id } })
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="view-switch" aria-label="Canvas view">
+                <button
+                  className={!scene.board ? "selected" : ""}
+                  onClick={() => update("board", false)}
+                >
+                  <Icon name="layers" size={14} />
+                  Studio
+                </button>
+                <button
+                  className={scene.board ? "selected" : ""}
+                  onClick={() => update("board", true)}
+                >
+                  <Icon name="board" size={14} />
+                  Drawing board
+                </button>
+              </div>
+            )}
             <div className="workspace-status">
               <span className="render-status">
                 <span className="live-dot" />
@@ -1146,46 +1224,54 @@ export default function Studio() {
                   <Icon name="cursor" size={16} />
                   <span>Interact</span>
                 </button>
-                <button
-                  className={mode === "draw" ? "selected" : ""}
-                  onClick={() => chooseTool("draw")}
-                  title="Draw (D)"
-                  aria-pressed={mode === "draw"}
-                >
-                  <Icon name="pen" size={16} />
-                  <span>Draw</span>
-                </button>
-                <button
-                  className={mode === "erase" ? "selected" : ""}
-                  onClick={() => chooseTool("erase")}
-                  title="Erase (E)"
-                  aria-pressed={mode === "erase"}
-                >
-                  <Icon name="eraser" size={17} />
-                  <span>Erase</span>
-                </button>
+                {scene.workspace !== "mapping" && (
+                  <>
+                    <button
+                      className={mode === "draw" ? "selected" : ""}
+                      onClick={() => chooseTool("draw")}
+                      title="Draw (D)"
+                      aria-pressed={mode === "draw"}
+                    >
+                      <Icon name="pen" size={16} />
+                      <span>Draw</span>
+                    </button>
+                    <button
+                      className={mode === "erase" ? "selected" : ""}
+                      onClick={() => chooseTool("erase")}
+                      title="Erase (E)"
+                      aria-pressed={mode === "erase"}
+                    >
+                      <Icon name="eraser" size={17} />
+                      <span>Erase</span>
+                    </button>
+                  </>
+                )}
               </div>
               <span className="tool-divider" />
-              <label className="ink-label" title="Ink color">
-                <input
-                  aria-label="Ink color"
-                  type="color"
-                  value={scene.ink}
-                  onChange={(e) => update("ink", e.target.value)}
-                />
-              </label>
-              {mode === "erase" && (
-                <label className="eraser-size">
-                  <span>Size</span>
-                  <input
-                    aria-label="Eraser size"
-                    type="range"
-                    min={10}
-                    max={100}
-                    value={eraserSize}
-                    onChange={(e) => setEraserSize(Number(e.target.value))}
-                  />
-                </label>
+              {scene.workspace !== "mapping" && (
+                <>
+                  <label className="ink-label" title="Ink color">
+                    <input
+                      aria-label="Ink color"
+                      type="color"
+                      value={scene.ink}
+                      onChange={(e) => update("ink", e.target.value)}
+                    />
+                  </label>
+                  {mode === "erase" && (
+                    <label className="eraser-size">
+                      <span>Size</span>
+                      <input
+                        aria-label="Eraser size"
+                        type="range"
+                        min={10}
+                        max={100}
+                        value={eraserSize}
+                        onChange={(e) => setEraserSize(Number(e.target.value))}
+                      />
+                    </label>
+                  )}
+                </>
               )}
               <span className="tool-divider" />
               <div className="tool-group">
@@ -1197,14 +1283,16 @@ export default function Studio() {
                 >
                   <Icon name="undo" size={17} />
                 </button>
-                <button
-                  className="icon-button danger-button"
-                  onClick={clearBoard}
-                  aria-label="Clear board"
-                  title="Clear board"
-                >
-                  <Icon name="trash" size={16} />
-                </button>
+                {scene.workspace !== "mapping" && (
+                  <button
+                    className="icon-button danger-button"
+                    onClick={clearBoard}
+                    aria-label="Clear board"
+                    title="Clear board"
+                  >
+                    <Icon name="trash" size={16} />
+                  </button>
+                )}
               </div>
               <span className="tool-divider" />
               <button

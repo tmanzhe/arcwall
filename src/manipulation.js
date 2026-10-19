@@ -1,6 +1,16 @@
 import { clamp } from "./geometry.js";
 export function objectBounds(s, target) {
   if (!target) return null;
+  if (target.kind === "cloud") {
+    if (s.workspace !== "mapping" || !s.mapping.image) return null;
+    return {
+      x: 140 + s.mapping.offsetX * 1920,
+      y: 100 + s.mapping.offsetY * 1080,
+      width: 1640,
+      height: 880,
+      label: "Image point cloud",
+    };
+  }
   let cx, cy, w, h, label;
   if (target.kind === "shape") {
     const p = s.shapes.find((p) => p.id === target.id);
@@ -65,6 +75,8 @@ function distance(p, a, b) {
   return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
 }
 export function pickObject(s, point) {
+  if (s.workspace === "mapping")
+    return s.mapping.image ? { kind: "cloud" } : null;
   const [x, y] = [point[0] * 1920, point[1] * 1080];
   for (let i = s.strokes.length - 1; i >= 0; i--) {
     const pts = s.strokes[i].points.map(([x, y]) => [x * 1920, y * 1080]);
@@ -92,6 +104,16 @@ export function transformObject(current, base, target, dx, dy, factor = 1) {
   if (!Number.isFinite(dx) || !Number.isFinite(dy) || !Number.isFinite(factor))
     return current;
   factor = clamp(factor, 0.15, 5);
+  if (target.kind === "cloud")
+    return {
+      ...current,
+      mapping: {
+        ...current.mapping,
+        offsetX: clamp(base.mapping.offsetX + dx, -0.45, 0.45),
+        offsetY: clamp(base.mapping.offsetY + dy, -0.45, 0.45),
+        zoom: clamp(base.mapping.zoom * factor, 30, 180),
+      },
+    };
   if (target.kind === "shape") {
     const p = base.shapes.find((p) => p.id === target.id);
     if (!p) return current;

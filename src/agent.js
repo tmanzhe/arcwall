@@ -3,6 +3,9 @@ import { PRESETS } from "./scene.js";
 export function sceneContext(scene) {
   return {
     ...scene,
+    mapping: scene.mapping
+      ? { ...scene.mapping, image: null, depth: null }
+      : undefined,
     strokes: scene.strokes.map(({ color }) => ({ color, points: [] })),
   };
 }
