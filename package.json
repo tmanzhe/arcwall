@@ -1,0 +1,13 @@
+{
+  "name": "arcwall",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A vision-controlled holographic projection studio for ordinary projectors.",
+  "scripts": {
+    "start": "python3 -m http.server 8787 --bind 127.0.0.1",
+    "test": "node --test tests/*.test.js",
+    "check": "node --check src/app.js && node --check src/renderer.js && node --check src/geometry.js && node --check src/vision.js"
+  },
+  "license": "MIT"
+}
