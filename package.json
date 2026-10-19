@@ -10,8 +10,8 @@
     "start": "next start --hostname 127.0.0.1 --port 8787",
     "test": "node --test tests/*.test.js",
     "check": "node --check src/renderer.js && node --check src/geometry.js && node --check src/vision.js && node --check src/eraser.js && node --check src/agent.js && node --check src/scene.js && node --check src/gestures.js && node --check src/microphone.js && node --check src/server/request.js && node --check public/vision-worker.js && node --check public/depth-worker.js && node --check src/image-mapping.js && node --check src/manipulation.js && node --check src/backgrounds.js",
-    "format": "prettier --write app components src tests public/vision-worker.js public/depth-worker.js style.css package.json next.config.mjs README.md ROADMAP.md .github/workflows/ci.yml",
-    "format:check": "prettier --check app components src tests public/vision-worker.js public/depth-worker.js style.css package.json next.config.mjs README.md ROADMAP.md .github/workflows/ci.yml"
+    "format": "prettier --write app components src tests public/vision-worker.js public/depth-worker.js style.css package.json next.config.mjs README.md ROADMAP.md HOMELAB.md .github/workflows/ci.yml",
+    "format:check": "prettier --check app components src tests public/vision-worker.js public/depth-worker.js style.css package.json next.config.mjs README.md ROADMAP.md HOMELAB.md .github/workflows/ci.yml"
   },
   "license": "MIT",
   "dependencies": {

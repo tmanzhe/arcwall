@@ -2,7 +2,7 @@
 
 **Turn an ordinary projector into a hand-controlled holographic workspace.**
 
-A sci-fi projection studio inspired by the interfaces in Iron Man: a spatial grid, a rotating reactor core, a mechanical arm, and a drawing board you can control from your laptop or with your hands. Built as a small, local-first system with a path toward a drawing-aware voice agent.
+A sci-fi projection studio inspired by the interfaces in Iron Man: a spatial grid, a rotating reactor core, a mechanical arm, seven background scenes, image-depth particles, and a drawing board you can control from your laptop or with your hands. Built as a small, local-first system with a path toward a drawing-aware voice agent.
 
 ## Run it
 
@@ -23,7 +23,7 @@ Open **http://127.0.0.1:8787**. The projection studio and local commands work wi
 2. Select **Drawing board** for a clear grid. Use **Expand canvas** in the floating drawing dock to fill the workspace while keeping the tools available. Press **Escape** to return to the control desk.
 3. Use the left navigation rail to open **Scene**, **Vision**, **Objects**, or **Setup** in the right inspector. Customize the reactor and arm, switch palettes, and add rectangle or ellipse outlines in **Objects**. Close the inspector for a wider canvas.
 4. Try a local command: **“make the core bigger and turn it amber”**, **“hide the grid”**, or **“add a circle”**. These commands use a small deterministic parser, not an AI model.
-5. Enable hand tracking, allow camera access, and hold your hand where the webcam can see it. Point to aim, pinch to draw or erase, and spread two open hands to resize the reactor.
+5. Enable hand tracking, allow camera access, and hold your hand where the webcam can see it. In **Interact** mode, pinch over an object to grab it, move your hand, then release. Select an object and spread two open hands to resize it. Choose **Draw** or **Erase** for pinch-controlled ink. **Show my hand on the projection** independently controls the skeleton overlay.
 
 ## Connect a projector
 
@@ -39,18 +39,35 @@ The renderer uses a 1920 × 1080 drawing surface and preserves its aspect ratio 
 
 ## What is implemented
 
-| Area              | Current behavior                                                                                              |
-| ----------------- | ------------------------------------------------------------------------------------------------------------- |
-| Holographic scene | Procedural wireframe sphere with orbiting rings, articulated arm, animated grid, decorative telemetry         |
-| Control desk      | Tabbed inspector, palette, intensity, motion speed, core and arm transforms, corner layout, layer toggles     |
-| Drawing           | Mouse/touch ink, adjustable eraser, stroke splitting, undo, clear board, expanded board mode                  |
-| Scene shapes      | Add, label, position, resize, recolor, and remove rectangles and ellipses                                     |
-| Wall fitting      | Four-point perspective mapping with crossed/degenerate corner rejection and inverse pointer mapping           |
-| Vision            | Worker-based MediaPipe hand landmarks, smoothed pointer, pinch hysteresis, skeleton overlay, two-hand scaling |
-| Persistence       | Browser-local autosave, versioned JSON import/export, PNG snapshots                                           |
-| Agent and voice   | Side-panel voice questions, canvas snapshots, spoken replies, local commands, and reviewable scene edits      |
+| Area              | Current behavior                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Holographic scene | Seven backgrounds: Arc lab, Guardian hand, Kinetic hand, Creation hands, Orbital, Constellation, Quiet grid        |
+| Control desk      | Tabbed inspector, palette, intensity, motion speed, core and arm transforms, corner layout, layer toggles          |
+| Drawing           | Mouse/touch ink, adjustable eraser, stroke splitting, undo, clear board, expanded board mode                       |
+| Scene shapes      | Add, label, position, resize, recolor, and remove rectangles and ellipses                                          |
+| Image mapping     | Local image upload, brightness relief, optional AI depth or uploaded depth, animated particle cloud, motion briefs |
+| Interaction       | Mouse/touch dragging, pinch grabbing, two-hand resize of selected models, shapes, ink, and image cloud             |
+| Wall fitting      | Four-point perspective mapping with crossed/degenerate corner rejection and inverse pointer mapping                |
+| Vision            | Worker-based MediaPipe hand landmarks, smoothed pointer, pinch hysteresis, skeleton overlay, two-hand scaling      |
+| Persistence       | Browser-local autosave, versioned JSON import/export, PNG snapshots                                                |
+| Agent and voice   | Side-panel voice questions, canvas snapshots, spoken replies, local commands, and reviewable scene edits           |
+
+The **Creation hands** scene is an original procedural 3D wireframe study inspired by the reaching hands in Michelangelo’s _The Creation of Adam_, matching the image referenced in [The Hand of God and the Story of a Soul](https://beyondthesestonewalls.squarespace.com/posts/the-hand-of-god-and-the-story-of-a-soul). It is not a scanned mesh or a bundled reproduction of that photograph.
 
 The moving graphics and telemetry are visual effects. The reactor is a mathematical 3D wireframe projected onto a 2D canvas; the arm is an animated articulated drawing.
+
+## Image mapping workspace
+
+Switch the top workspace to **Mapping**. This hides the sci-fi decorations and opens an independent image-based scene; your Studio ink stays saved.
+
+1. Choose **Try a local terrain demo** or upload a PNG/JPEG/WebP under 10 MB. Images are resized to a maximum 640-pixel edge and kept in the browser.
+2. The instant fallback is labeled **Brightness relief**: bright pixels protrude. For inferred geometry, click **Estimate AI depth locally**, or upload a grayscale depth map where brighter means nearer.
+3. The optional depth worker downloads [Depth Anything V2 Small](https://huggingface.co/onnx-community/depth-anything-v2-small) using [Transformers.js](https://huggingface.co/docs/transformers.js/en/index), then runs WASM inference in your browser. This produces relative depth from one image, not a physical scan or hidden geometry. The first run needs network access for model assets; you can cancel it.
+4. Switch between **Pixels**, **Depth**, and **Image** previews. Adjust depth strength, density, size, colors, scale, orbit/push-in/drift/static motion, and pacing. Drag the cloud in **Interact** mode or use hands.
+5. Try a brief such as “Slow orbit, neon particles, continuous 18 second shot.” The local parser recognizes supported camera movement, duration, speed, and colors. It does not call a video generator or invent new moving subjects, scenes, or audio.
+6. Use the same projector window and four-corner fitting. Uploaded assets and Mapping settings are included in local autosave and JSON export.
+
+Local AI depth has been exercised in the browser with the synthetic demo. Quality on real photographs and performance on other hardware still need evaluation.
 
 ## Optional drawing-aware agent
 
@@ -139,6 +156,8 @@ The tests exercise perspective round-trips, invalid surfaces, gesture transition
 
 | Key    | Action                                       |
 | ------ | -------------------------------------------- |
+| V      | Interact / grab objects                      |
+| Delete | Remove the selected object                   |
 | D      | Draw                                         |
 | E      | Erase                                        |
 | M      | Fit to wall                                  |
@@ -153,9 +172,11 @@ The tests exercise perspective round-trips, invalid surfaces, gesture transition
 
 - Hand positions are mapped from the mirrored webcam image like an air mouse. Precise tracing of a real wall needs a camera-to-projector calibration step; four-point wall fitting alone does not provide that calibration.
 - The first camera session downloads MediaPipe JavaScript, WASM, and model assets. Webcam frames stay in the browser. Camera permission and real-world tracking quality depend on your browser, lighting, framing, and hardware.
-- One quadrilateral is supported. Multiple independent mapped surfaces, shape grabbing, and general 3D object editing are next-stage work.
+- One quadrilateral is supported. Multiple independent mapped surfaces, resize handles, and general 3D mesh editing are next-stage work.
 - The server is bound to loopback for personal use. Add authentication and abuse controls before exposing a configured AI route on the public internet.
 - Hardware projection and model-backed AI calls require manual validation on the actual setup. Automated tests do not establish physical tracking accuracy or API availability.
+
+Homelab metrics, OpenClaw investigations, and a 24/7 Lab workspace are planned in [HOMELAB.md](HOMELAB.md); none are connected yet.
 
 See [ROADMAP.md](ROADMAP.md) for the staged plan and acceptance criteria.
 

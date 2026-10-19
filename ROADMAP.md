@@ -20,7 +20,8 @@ The project grows in independently usable stages. Finish and demonstrate each st
 - [x] Undoable clear board, including drawing shapes.
 - [x] Expanded drawing board with accessible tools and hidden decorative holograms.
 - [x] Editable rectangle and ellipse objects.
-- [ ] Object picking, direct dragging, and resize handles.
+- [x] Object picking and direct dragging of shapes, ink, and scene models.
+- [ ] Direct resize handles.
 - [ ] Multi-surface layouts and per-surface masking.
 
 **Acceptance:** draw, erase part of a line, undo the cut, clear the board, restore it, and save/reload the layout.
@@ -30,11 +31,12 @@ The project grows in independently usable stages. Finish and demonstrate each st
 - [x] Worker-based hand landmark inference.
 - [x] Mirrored, smoothed pointer and hand skeleton.
 - [x] Pinch to draw or erase with hysteresis.
-- [x] Two open hands resize the reactor.
+- [x] Two open hands resize the selected object.
+- [x] Independent hand-overlay visibility and mouse/hand control modes.
 - [x] Tracking-loss behavior and camera teardown.
 - [ ] Measure tracking stability and latency with the actual webcam.
 - [ ] Calibrate four camera points to corresponding projection points.
-- [ ] Pinch to grab scene objects; two-hand object transforms.
+- [x] Pinch to grab scene objects; two-hand object transforms.
 
 **Acceptance:** draw several separate strokes by pinching, release without unwanted connecting lines, and lose/reacquire the hand without drawing a jump. Then validate camera-to-wall calibration independently.
 
@@ -66,6 +68,28 @@ The project grows in independently usable stages. Finish and demonstrate each st
 **Current acceptance:** ask a recorded question about a drawing, inspect its transcript and snapshot, hear the reply, cancel or interrupt it, and apply an undoable scene proposal. Validate microphone cleanup on close and denied-permission behavior.
 
 **Future acceptance:** point at an object and say “move this to the left”; the agent identifies the selected object and handles continuous, interruptible conversation.
+
+## 6. Image mapping and background gallery — implemented
+
+- [x] Seven procedural backgrounds, including a pair of reaching Creation hands.
+- [x] Separate Mapping workspace and local image upload.
+- [x] Brightness relief, uploaded depth maps, and optional local AI relative-depth estimation.
+- [x] Animated image particles, camera presets, and rule-based motion briefs.
+- [x] Demo terrain, depth/image previews, autosave, and projector synchronization.
+- [ ] Evaluate inferred depth with varied real photographs and low-end hardware.
+- [ ] Multi-surface masks and richer mesh/material rendering.
+
+**Acceptance:** load a source, compute depth, orbit its particles, move the cloud, and project it without sci-fi decorations. Synthetic-demo browser depth inference has been verified; physical projection remains a hardware check.
+
+## 7. Homelab operations canvas — planned
+
+- [ ] Read-only Prometheus connector with real service health, trends, alerts, and stale states.
+- [ ] OpenClaw Gateway adapter, streamed investigation activity, cancellation, and evidence links.
+- [ ] Pin live charts, service nodes, and investigation findings to movable canvas objects.
+- [ ] Authenticated homelab deployment and scheduled kiosk output.
+- [ ] Reconnect/restart recovery and a 24-hour resource/uptime soak test.
+
+See [HOMELAB.md](HOMELAB.md) for architecture, acceptance criteria, and required connection information. Real endpoints are needed before claiming any integration works.
 
 ## Portfolio demonstration
 
