@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SCENE } from "../src/scene.js";
+import { DEFAULT_SCENE, sanitizeScene } from "../src/scene.js";
 import {
   pickObject,
   transformObject,
@@ -91,4 +91,14 @@ test("remove only affects the selected object", () => {
   assert.equal(removeObject(s, { kind: "shape", id: "box" }).shapes.length, 0);
   assert.equal(removeObject(s, { kind: "sphere" }).sphere, false);
   assert.equal(removeObject(s, { kind: "sphere" }).arm, true);
+});
+
+test("Creation hands survives scene import and supports object transforms", () => {
+  const s = sanitizeScene({ ...DEFAULT_SCENE, ...backgroundPatch("creation") });
+  assert.equal(s.background, "creation");
+  assert.deepEqual(pickObject(s, [0.5, 0.44]), { kind: "artifact" });
+  const moved = transformObject(s, s, { kind: "artifact" }, 0.1, 0.1, 1.2);
+  assert.equal(moved.artifactX, 60);
+  assert.equal(moved.artifactY, 54);
+  assert.equal(moved.artifactScale, 120);
 });

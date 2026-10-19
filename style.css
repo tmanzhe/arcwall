@@ -2461,3 +2461,11 @@ body.focus .voice-drawer {
     padding: 5px 6px;
   }
 }
+
+.bg-creation {
+  background: radial-gradient(ellipse at center, #b58eeb25, transparent 70%);
+  color: #d2b1f5;
+}
+.bg-creation svg {
+  transform: rotate(85deg);
+}

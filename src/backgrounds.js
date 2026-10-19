@@ -35,6 +35,18 @@ export const BACKGROUNDS = {
       hologram: true,
     },
   },
+  creation: {
+    name: "Creation hands",
+    description: "Two hands reaching across a space of light",
+    icon: "hand",
+    values: {
+      sphere: false,
+      arm: false,
+      telemetry: false,
+      grid: false,
+      hologram: true,
+    },
+  },
   orbital: {
     name: "Orbital",
     description: "Interlocking rings in a weightless field",
@@ -81,7 +93,9 @@ export function renderArtifact(c, s, t, color, brightness) {
   if (
     !s.hologram ||
     s.board ||
-    !["guardian", "kinetic", "orbital", "constellation"].includes(s.background)
+    !["guardian", "kinetic", "creation", "orbital", "constellation"].includes(
+      s.background,
+    )
   )
     return;
   const scale = s.artifactScale / 100;
@@ -91,7 +105,8 @@ export function renderArtifact(c, s, t, color, brightness) {
   c.strokeStyle = color;
   c.fillStyle = color;
   c.lineWidth = 1.2;
-  const angle = t * 0.23,
+  const angle =
+      s.background === "creation" ? Math.sin(t * 0.2) * 0.5 : t * 0.23,
     tilt = 0.18 + Math.sin(t * 0.19) * 0.12;
   const project = ([x, y, z]) => {
     const a = x * Math.cos(angle) + z * Math.sin(angle),
@@ -230,6 +245,54 @@ export function renderArtifact(c, s, t, color, brightness) {
         : "K I N E T I C  /  S T U D Y",
       s.background === "guardian" ? 355 : 250,
     );
+  } else if (s.background === "creation") {
+    // Original procedural study of the reaching gesture in The Creation of Adam.
+    // Rounded mesh sections share real XYZ coordinates; no reference photo is bundled.
+    for (const side of [-1, 1]) {
+      const pose = ([x, y, z]) => [
+        side * x,
+        y + (side === 1 ? -16 : 16),
+        z * side,
+      ];
+      const reach = Math.sin(t * 0.55) * 4;
+      tube(pose([450, 100, 0]), pose([292, 44, 0]), 29, 38);
+      ellipsoid(pose([246, 23, 0]), [70, 54, 24]);
+      const index = [
+        [202, -14, 0],
+        [132, -37, 0],
+        [74, -29, 3],
+        [20 + reach, -22, 5],
+      ];
+      for (let i = 0; i < 3; i++)
+        tube(pose(index[i]), pose(index[i + 1]), 12 - i * 2, 10 - i * 2);
+      for (let finger = 0; finger < 3; finger++) {
+        const y = 12 + finger * 24;
+        const chain = [
+          [205, y, 0],
+          [156, y + 9, 5],
+          [166, y + 34, 28],
+          [200, y + 25, 35],
+        ];
+        for (let i = 0; i < 3; i++)
+          tube(pose(chain[i]), pose(chain[i + 1]), 12 - i * 2, 10 - i * 2);
+      }
+      const thumb = [
+        [270, -11, 8],
+        [232, -67, 21],
+        [197, -78, 24],
+        [178, -64, 24],
+      ];
+      for (let i = 0; i < 3; i++)
+        tube(pose(thumb[i]), pose(thumb[i + 1]), 15 - i * 3, 12 - i * 3);
+    }
+    const glow = project([0, -22, 5]);
+    for (let i = 0; i < 3; i++) {
+      c.globalAlpha = brightness * (0.22 - i * 0.06);
+      c.beginPath();
+      c.arc(glow[0], glow[1], 7 + i * 10 + Math.sin(t) * 3, 0, TAU);
+      c.stroke();
+    }
+    label("C R E A T I O N  /  T H E  S P A C E  B E T W E E N", 210);
   } else if (s.background === "orbital") {
     for (let ring = 0; ring < 7; ring++) {
       const points = [];
@@ -278,6 +341,59 @@ export function renderArtifact(c, s, t, color, brightness) {
     label("C O N S T E L L A T I O N", 340);
   }
   c.restore();
+  function ellipsoid(center, radii) {
+    for (let axis = 0; axis < 3; axis++)
+      for (let band = -2; band <= 2; band++) {
+        const slice = band / 3,
+          r = Math.sqrt(1 - slice * slice),
+          pts = [];
+        for (let i = 0; i <= 40; i++) {
+          const a = (i / 40) * TAU,
+            v = [0, 0, 0];
+          v[axis] = slice;
+          v[(axis + 1) % 3] = Math.cos(a) * r;
+          v[(axis + 2) % 3] = Math.sin(a) * r;
+          pts.push(v.map((n, k) => center[k] + n * radii[k]));
+        }
+        line(pts, 0.27);
+      }
+  }
+  function tube(a, b, r1, r2) {
+    const v = b.map((n, k) => n - a[k]),
+      len = Math.hypot(...v),
+      d = v.map((n) => n / len);
+    const u = [-d[1], d[0], 0],
+      ulen = Math.hypot(...u);
+    if (ulen < 0.001) return;
+    const q = u.map((n) => n / ulen),
+      z = [
+        d[1] * q[2] - d[2] * q[1],
+        d[2] * q[0] - d[0] * q[2],
+        d[0] * q[1] - d[1] * q[0],
+      ];
+    const rings = [];
+    for (let j = 0; j <= 4; j++) {
+      const f = j / 4,
+        r = (r1 + (r2 - r1) * f) * (0.85 + 0.15 * Math.sin(f * Math.PI));
+      const ring = [];
+      for (let i = 0; i <= 10; i++) {
+        const t = (i / 10) * TAU;
+        ring.push(
+          a.map(
+            (n, k) =>
+              n + v[k] * f + (q[k] * Math.cos(t) + z[k] * Math.sin(t)) * r,
+          ),
+        );
+      }
+      line(ring, 0.34);
+      rings.push(ring);
+    }
+    for (let i = 0; i < 10; i++)
+      line(
+        rings.map((r) => r[i]),
+        0.48,
+      );
+  }
   function bone(a, b, r) {
     const offsets = [
       [r, 0, 0],

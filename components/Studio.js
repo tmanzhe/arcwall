@@ -771,7 +771,11 @@ export default function Studio() {
               <p className="panel-description">
                 A little atmosphere. A lot of possibility.
               </p>
-              <Section number="" title="Background scenes" status="6 SCENES">
+              <Section
+                number=""
+                title="Background scenes"
+                status={`${Object.keys(BACKGROUNDS).length} SCENES`}
+              >
                 <BackgroundPicker
                   value={scene.background}
                   onChange={(id) => {
@@ -835,9 +839,13 @@ export default function Studio() {
                   ))}
                 </div>
               </Section>
-              {["guardian", "kinetic", "orbital", "constellation"].includes(
-                scene.background,
-              ) && (
+              {[
+                "guardian",
+                "kinetic",
+                "creation",
+                "orbital",
+                "constellation",
+              ].includes(scene.background) && (
                 <Section
                   number=""
                   title="Background model"
@@ -1319,7 +1327,7 @@ export default function Studio() {
                   ? `${objectBounds(scene, selection)?.label || "Object"} selected · drag to move · two hands to resize`
                   : cameraState === "on"
                     ? "Point at an object. Pinch, move, release."
-                    : "Drag a model, shape, or ink stroke to move it."}
+                    : "Drag to move · select an object, then spread two hands to resize."}
                 <button
                   onClick={() => {
                     setPanel("vision");

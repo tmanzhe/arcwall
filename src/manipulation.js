@@ -50,7 +50,7 @@ export function objectBounds(s, target) {
     if (
       !s.hologram ||
       s.board ||
-      !["guardian", "kinetic", "orbital", "constellation"].includes(
+      !["guardian", "kinetic", "creation", "orbital", "constellation"].includes(
         s.background,
       )
     )
@@ -58,7 +58,12 @@ export function objectBounds(s, target) {
     cx = (s.artifactX / 100) * 1920;
     cy = (s.artifactY / 100) * 1080;
     w = h = ((s.background === "kinetic" ? 510 : 660) * s.artifactScale) / 100;
+    if (s.background === "creation") {
+      w = (1000 * s.artifactScale) / 100;
+      h = (500 * s.artifactScale) / 100;
+    }
     label = {
+      creation: "Creation hands",
       guardian: "Guardian hand",
       kinetic: "Kinetic hand",
       orbital: "Orbital rings",
