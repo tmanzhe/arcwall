@@ -51,8 +51,8 @@ export class Renderer {
     c.fillStyle = color;
     c.lineWidth = 1;
     if (s.grid) this.grid(c, t, color);
-    if (s.telemetry) this.telemetry(c, t, color, interaction);
-    if (s.sphere)
+    if (s.telemetry && !s.board) this.telemetry(c, t, color, interaction);
+    if (s.sphere && !s.board)
       this.sphere(
         c,
         (s.sphereX / 100) * W,
@@ -62,7 +62,7 @@ export class Renderer {
         color,
         interaction.pointer,
       );
-    if (s.arm) this.arm(c, 390, 690, t, color, interaction.pointer);
+    if (s.arm && !s.board) this.arm(c, 390, 690, t, color, interaction.pointer);
     this.shapes(c, s.shapes || []);
     this.ink(c, s.strokes);
     if (interaction.activeStroke) this.ink(c, [interaction.activeStroke]);
@@ -77,6 +77,16 @@ export class Renderer {
       c.shadowBlur = 12;
       c.lineWidth = 2;
       c.beginPath();
+      if (interaction.eraser) {
+        c.lineWidth = 1.5;
+        c.setLineDash([7, 5]);
+        c.arc(0, 0, interaction.eraser, 0, TAU);
+        c.stroke();
+        c.setLineDash([]);
+        c.restore();
+        c.restore();
+        return;
+      }
       c.arc(0, 0, interaction.pinching ? 12 : 23, 0, TAU);
       c.stroke();
       for (let i = 0; i < 4; i++) {

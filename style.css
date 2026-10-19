@@ -752,3 +752,85 @@ body.output #output-start[hidden] {
     transition: none !important;
   }
 }
+.eraser-size {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 9px var(--mono);
+  color: var(--muted);
+}
+.eraser-size input {
+  width: 70px;
+  margin: 0 7px 0 0;
+}
+.workspace-top {
+  gap: 12px;
+}
+.tools {
+  flex-wrap: wrap;
+}
+.tool-group {
+  flex-wrap: wrap;
+}
+body.focus {
+  overflow: hidden;
+}
+body.focus header,
+body.focus .sidebar,
+body.focus .workspace-top,
+body.focus .canvas-footer,
+body.focus .bottom-cards,
+body.focus .agent-panel {
+  display: none;
+}
+body.focus main {
+  display: block;
+  min-height: 0;
+  height: 100dvh;
+}
+body.focus .workspace {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100dvh;
+  gap: 10px;
+}
+body.focus #stage-wrap {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  display: grid;
+  place-items: center;
+  border-color: #30434b;
+}
+body.focus #stage {
+  width: min(100%, calc((100dvh - 100px) * 1.7777778));
+  height: auto;
+  aspect-ratio: 16/9;
+}
+body.focus .tools {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  flex-shrink: 0;
+  justify-content: space-between;
+}
+body.focus .tools button {
+  padding: 10px 14px;
+}
+body.focus .tool-group {
+  gap: 7px;
+}
+@media (max-width: 900px) {
+  body.focus #stage {
+    width: min(100%, calc((100dvh - 150px) * 1.7777778));
+  }
+  body.focus .tools {
+    justify-content: center;
+  }
+  body.focus .tools button {
+    padding: 8px 10px;
+  }
+}

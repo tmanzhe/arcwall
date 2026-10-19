@@ -12,6 +12,7 @@ import {
 } from "../src/geometry.js";
 import AgentPanel from "./AgentPanel";
 import ShapeEditor from "./ShapeEditor";
+import { eraseInk } from "../src/eraser.js";
 
 const CHANNEL = "arcwall-studio-v1";
 function Range({ label, value, min, max, unit = "%", onChange }) {
@@ -51,6 +52,8 @@ export default function Studio() {
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
   const [mode, setMode] = useState("draw"),
+    [focus, setFocus] = useState(false),
+    [eraserSize, setEraserSize] = useState(35),
     [clean, setClean] = useState(false),
     [output, setOutput] = useState(false),
     [fps, setFps] = useState(0),
@@ -75,6 +78,10 @@ export default function Studio() {
     importFile = useRef(null),
     toastTimer = useRef(null),
     alive = useRef(true);
+  const erasing = useRef(false),
+    lastErase = useRef(null),
+    eraserSizeRef = useRef(eraserSize);
+  eraserSizeRef.current = eraserSize;
   const outputRef = useRef(false),
     modeRef = useRef("draw");
   modeRef.current = mode;
@@ -111,6 +118,31 @@ export default function Studio() {
     (point, drawing) => {
       interaction.current.pointer = point;
       interaction.current.pinching = drawing;
+      if (modeRef.current === "erase") {
+        interaction.current.eraser = eraserSizeRef.current;
+        if (drawing) {
+          if (!erasing.current) {
+            remember();
+            erasing.current = true;
+          }
+          const from = lastErase.current || point;
+          setScene((s) => {
+            const strokes = eraseInk(
+              s.strokes,
+              from,
+              point,
+              eraserSizeRef.current,
+            );
+            return strokes === s.strokes ? s : { ...s, strokes };
+          });
+          lastErase.current = point;
+        } else {
+          erasing.current = false;
+          lastErase.current = null;
+        }
+        return;
+      }
+      interaction.current.eraser = null;
       if (drawing) {
         if (!stroke.current)
           stroke.current = { color: sceneRef.current.ink, points: [] };
@@ -124,7 +156,7 @@ export default function Studio() {
         interaction.current.activeStroke = stroke.current;
       } else if (stroke.current) finishStroke();
     },
-    [finishStroke],
+    [finishStroke, remember],
   );
   useEffect(() => {
     alive.current = true;
@@ -199,12 +231,16 @@ export default function Studio() {
   }, [scene, ready, output, notify]);
   useEffect(() => {
     document.body.classList.toggle("clean", clean);
+    document.body.classList.toggle("focus", focus && !output);
     document.body.classList.toggle("output", output);
     document.body.classList.toggle("mapping", mode === "map" && !output);
     return () => {
-      document.body.classList.remove("clean", "output", "mapping");
+      document.body.classList.remove("clean", "output", "mapping", "focus");
     };
-  }, [clean, output, mode]);
+  }, [clean, output, mode, focus]);
+  useEffect(() => {
+    interaction.current.eraser = mode === "erase" ? eraserSize : null;
+  }, [mode, eraserSize]);
   const fullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement)
@@ -229,6 +265,15 @@ export default function Studio() {
       if (key === "f") fullscreen();
       if (key === "m") setMode("map");
       if (key === "d") setMode("draw");
+      if (key === "e") setMode("erase");
+      if (key === "b") {
+        setFocus((v) => !v);
+        patch({ board: !sceneRef.current.board });
+      }
+      if (key === "escape") {
+        setFocus(false);
+        setClean(false);
+      }
       if (key === "z") undo();
       if (key === " ") {
         e.preventDefault();
@@ -285,11 +330,14 @@ export default function Studio() {
       const q = sceneRef.current.quad.map((p) => [...p]);
       q[corner.current] = screenPoint(e);
       if (validQuad(q)) patch({ quad: q });
-    } else if (mode === "draw") trace(canvasPoint(e), pointerDown.current);
+    } else if (mode === "draw" || mode === "erase")
+      trace(canvasPoint(e), pointerDown.current);
   }
   function up() {
     corner.current = null;
     pointerDown.current = false;
+    erasing.current = false;
+    lastErase.current = null;
     finishStroke();
     interaction.current.pinching = false;
   }
@@ -313,7 +361,7 @@ export default function Studio() {
           if (!alive.current) return;
           interaction.current.hands = results.hands;
           setGesture(results.gesture);
-          if (results.pointer && modeRef.current === "draw")
+          if (results.pointer && ["draw", "erase"].includes(modeRef.current))
             trace(results.pointer, results.pinching);
           else {
             finishStroke();
@@ -645,6 +693,28 @@ export default function Studio() {
                 ✎ Draw
               </button>
               <button
+                className={mode === "erase" ? "selected" : ""}
+                onClick={() => {
+                  finishStroke();
+                  setMode("erase");
+                }}
+              >
+                ◌ Erase
+              </button>
+              {mode === "erase" && (
+                <label className="eraser-size">
+                  SIZE
+                  <input
+                    aria-label="Eraser size"
+                    type="range"
+                    min={10}
+                    max={100}
+                    value={eraserSize}
+                    onChange={(e) => setEraserSize(Number(e.target.value))}
+                  />
+                </label>
+              )}
+              <button
                 className={mode === "map" ? "selected" : ""}
                 onClick={() => {
                   finishStroke();
@@ -657,10 +727,12 @@ export default function Studio() {
               <button
                 onClick={() => {
                   remember();
-                  patch({ strokes: [] });
+                  stroke.current = null;
+                  interaction.current.activeStroke = null;
+                  patch({ strokes: [], shapes: [] });
                 }}
               >
-                Clear ink
+                Clear board
               </button>
             </div>
             <div className="tool-group">
@@ -677,6 +749,21 @@ export default function Studio() {
                 {scene.paused ? "▷ Play" : "Ⅱ Pause"}
               </button>
               <button onClick={snapshot}>↓ Snapshot</button>
+              <button
+                className={scene.board ? "selected" : ""}
+                onClick={() => {
+                  finishStroke();
+                  const board = !scene.board;
+                  update("board", board);
+                  setFocus(board);
+                  setMode("draw");
+                }}
+              >
+                {scene.board ? "◧ Studio scene" : "▧ Drawing board"}
+              </button>
+              <button onClick={() => setFocus((v) => !v)}>
+                {focus ? "↙ Exit expanded" : "⤢ Expand"}
+              </button>
             </div>
           </div>
           <AgentPanel

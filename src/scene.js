@@ -15,6 +15,7 @@ export const DEFAULT_SCENE = {
   sensitivity: 35,
   ink: "#8defff",
   paused: false,
+  board: false,
   quad: IDENTITY_QUAD,
   strokes: [],
   shapes: [],
@@ -34,7 +35,15 @@ export function sanitizeScene(raw) {
   if (Object.hasOwn(PRESETS, raw.preset)) s.preset = raw.preset;
   for (const [k, [lo, hi]] of Object.entries(ranges))
     if (Number.isFinite(raw[k])) s[k] = Math.max(lo, Math.min(hi, raw[k]));
-  for (const k of ["grid", "sphere", "arm", "telemetry", "skeleton", "paused"])
+  for (const k of [
+    "grid",
+    "sphere",
+    "arm",
+    "telemetry",
+    "skeleton",
+    "paused",
+    "board",
+  ])
     if (typeof raw[k] === "boolean") s[k] = raw[k];
   if (/^#[\da-f]{6}$/i.test(raw.ink)) s.ink = raw.ink;
   if (validQuad(raw.quad)) s.quad = raw.quad.map((p) => [...p]);
