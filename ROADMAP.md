@@ -51,16 +51,21 @@ The project grows in independently usable stages. Finish and demonstrate each st
 
 **Acceptance:** sketch a layout, ask the agent to interpret it, request a supported object change, apply it, and undo it without losing any newer drawing.
 
-## 5. Live voice collaborator — planned
+## 5. Voice collaborator — recorded turns implemented, live API validation pending
 
-- [ ] Push-to-talk proof of concept before continuous audio.
+- [x] Click-to-talk recording with transcript, written response, and spoken reply.
+- [x] Side-panel entry point, canvas preview, and explicit snapshot controls.
+- [x] Recording cap, cancellation, playback interruption, replay, and microphone cleanup.
+- [x] Reuse the same validated scene tools for voice edits.
+- [x] Controlled canvas snapshots rather than continuous webcam uploads.
+- [ ] Validate a real recorded question and spoken response with the configured API key.
 - [ ] Realtime audio transport and interruption handling.
-- [ ] Reuse the same validated scene tools for voice edits.
 - [ ] Resolve “this,” “that,” and “over here” using selection and pointing context.
-- [ ] Controlled canvas snapshots rather than continuous webcam uploads.
-- [ ] Clear microphone/session controls and request-cost visibility.
+- [ ] Per-session API usage and cost visibility.
 
-**Acceptance:** point at an object and say “move this to the left”; the agent identifies the selected object, edits it, explains the action, and stops speaking when interrupted.
+**Current acceptance:** ask a recorded question about a drawing, inspect its transcript and snapshot, hear the reply, cancel or interrupt it, and apply an undoable scene proposal. Validate microphone cleanup on close and denied-permission behavior.
+
+**Future acceptance:** point at an object and say “move this to the left”; the agent identifies the selected object and handles continuous, interruptible conversation.
 
 ## Portfolio demonstration
 

@@ -560,7 +560,7 @@ export default function AgentPanel({
               {phase === "listening"
                 ? `${seconds}s / 30s · click again to send`
                 : configured
-                  ? "Ask, sketch, explore. One question at a time."
+                  ? "Click to record · auto-sends at 30 seconds"
                   : "Text commands still work without an API key."}
             </div>
             <div className="voice-buttons">

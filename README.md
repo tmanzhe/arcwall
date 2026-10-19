@@ -48,7 +48,7 @@ The renderer uses a 1920 × 1080 drawing surface and preserves its aspect ratio 
 | Wall fitting      | Four-point perspective mapping with crossed/degenerate corner rejection and inverse pointer mapping           |
 | Vision            | Worker-based MediaPipe hand landmarks, smoothed pointer, pinch hysteresis, skeleton overlay, two-hand scaling |
 | Persistence       | Browser-local autosave, versioned JSON import/export, PNG snapshots                                           |
-| Agent foundation  | Local scene commands; optional image-aware OpenAI route that proposes validated, undoable edits               |
+| Agent and voice   | Side-panel voice questions, canvas snapshots, spoken replies, local commands, and reviewable scene edits      |
 
 The moving graphics and telemetry are visual effects. The reactor is a mathematical 3D wireframe projected onto a 2D canvas; the arm is an animated articulated drawing.
 
@@ -63,11 +63,34 @@ OPENAI_MODEL=gpt-4.1-mini
 
 The key is used only by the Next.js server route. Never put it in a `NEXT_PUBLIC_` variable or commit `.env.local`.
 
-With a key configured, the scene panel sends your prompt and scene summary to OpenAI. **Attach canvas snapshot** explicitly includes a rendered image of the drawing board; it does not include webcam video. The model returns a constrained `update_scene` function call, and the UI presents proposed changes for you to apply. Changes operate on the current scene so a response does not overwrite newer ink or wall alignment. Use **Undo** after applying an edit to revert it.
+With a key configured, the scene panel sends your prompt and scene summary to OpenAI. **Include canvas** adds a rendered image of the drawing board; it does not include webcam video. This is enabled by default and can be turned off before sending. The model returns a constrained `update_scene` function call, and the UI presents proposed changes for you to apply. Changes operate on the current scene so a response does not overwrite newer ink or wall alignment. Use **Undo** after applying an edit to revert it.
 
-The current agent can change supported visual parameters and add labeled rectangles or ellipses. It does not yet generate arbitrary 3D models, rewrite freehand strokes, continuously watch the canvas, or conduct live voice conversations. Full-duplex voice is a planned milestone, not a hidden requirement for the projection studio.
+The current agent can discuss a canvas snapshot, change supported visual parameters, and add labeled rectangles or ellipses. It does not yet generate arbitrary 3D models, rewrite freehand strokes, or continuously watch the canvas. Voice conversations currently use recorded turns; full-duplex streaming is a later milestone.
 
 The route follows the [OpenAI Responses API image-input guide](https://developers.openai.com/api/docs/guides/images-vision) and uses a strict function schema. Live provider behavior requires an account with access to the configured model and available API quota.
+
+## Talk about your canvas
+
+1. Open **Assistant** in the left navigation rail. A side panel opens with a preview of the canvas context.
+2. If prompted, configure `OPENAI_API_KEY` in `.env.local`, restart if needed, and select **Recheck connection**. The microphone button remains disabled until a key is configured.
+3. Leave **Include canvas with each question** enabled to let the agent see your drawing. A fresh snapshot and matching scene settings are captured at the end of each voice recording. You can refresh the local preview without sending it.
+4. Click **Talk to Arc**, allow microphone access, and ask something like “What do you think this drawing is?” Click **Finish question** to send. Recordings automatically finish after 30 seconds.
+5. Read the transcript and reply in the conversation. With **Spoken replies** enabled, the answer also plays as an AI-generated voice. If autoplay is blocked, use **Play reply**.
+6. **Cancel** stops a recording or in-flight turn. **Interrupt & talk** stops playback and starts another recording. Closing the panel releases the microphone and stops playback.
+
+The flow is **record audio → transcribe → analyze the canvas and conversation → generate a spoken answer**. It uses the existing validated scene tools; a suggested scene edit still needs **Apply changes** and remains undoable. You can type instead of recording, or mute spoken replies.
+
+Audio is sent to OpenAI for transcription only after a recording finishes. The model also receives your conversation, a bounded scene summary, and the canvas snapshot when enabled. Webcam video is never attached. Raw ink point arrays are omitted from the AI payload because the snapshot already contains the drawing. Audio clips and replies are not saved to disk by Arcwall.
+
+Optional audio settings are in `.env.example`:
+
+```dotenv
+OPENAI_TRANSCRIBE_MODEL=gpt-4o-mini-transcribe
+OPENAI_SPEECH_MODEL=gpt-4o-mini-tts
+OPENAI_VOICE=cedar
+```
+
+The server uses the official [file transcription](https://developers.openai.com/api/docs/guides/speech-to-text) and [text-to-speech](https://developers.openai.com/api/docs/guides/text-to-speech) endpoints. These calls use your OpenAI API quota. The automated tests mock provider calls and exercise microphone cleanup; a real microphone-to-model conversation still needs validation with a configured key.
 
 ## Architecture
 
@@ -87,6 +110,10 @@ flowchart LR
   Scene -. selected snapshot .-> API[Next.js agent route]
   API -. server-side key .-> Model[OpenAI]
   Model -. validated scene proposal .-> Controls
+  Mic[Microphone recording] --> Transcribe[Next.js transcription route]
+  Transcribe --> API
+  Model --> Speech[Next.js speech route]
+  Speech --> Playback[Spoken reply on laptop]
 ```
 
 - **Next.js + React:** control desk, lifecycle, persistence, and optional API route.
