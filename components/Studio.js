@@ -1,10 +1,14 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Renderer } from "../src/renderer.js";
-import { DEFAULT_SCENE, PRESETS, sanitizeScene } from "../src/scene.js";
+import {
+  DEFAULT_SCENE,
+  PRESETS,
+  CORNER_LAYOUT,
+  sanitizeScene,
+} from "../src/scene.js";
 import {
   clamp,
-  cssHomography,
   homography,
   IDENTITY_QUAD,
   project,
@@ -13,6 +17,8 @@ import {
 import AgentPanel from "./AgentPanel";
 import ShapeEditor from "./ShapeEditor";
 import { eraseInk } from "../src/eraser.js";
+import Icon from "./Icon";
+import ProjectionStage from "./ProjectionStage";
 
 const CHANNEL = "arcwall-studio-v1";
 function Range({ label, value, min, max, unit = "%", onChange }) {
@@ -36,15 +42,18 @@ function Range({ label, value, min, max, unit = "%", onChange }) {
 }
 function Section({ number, title, status, children }) {
   return (
-    <section>
-      <div className="section-heading">
+    <details className="control-section" open>
+      <summary className="section-heading">
         <h2>
           {number} <span>{title}</span>
         </h2>
-        <span>{status}</span>
-      </div>
-      {children}
-    </section>
+        <span>
+          {status}
+          <Icon name="chevron" size={12} />
+        </span>
+      </summary>
+      <div className="section-content">{children}</div>
+    </details>
   );
 }
 export default function Studio() {
@@ -52,11 +61,14 @@ export default function Studio() {
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
   const [mode, setMode] = useState("draw"),
+    [panel, setPanel] = useState("scene"),
+    [inspectorOpen, setInspectorOpen] = useState(true),
     [focus, setFocus] = useState(false),
     [eraserSize, setEraserSize] = useState(35),
     [clean, setClean] = useState(false),
     [output, setOutput] = useState(false),
     [fps, setFps] = useState(0),
+    [saveStatus, setSaveStatus] = useState("Saved on this device"),
     [toast, setToast] = useState(""),
     [ready, setReady] = useState(false);
   const [cameraState, setCameraState] = useState("off"),
@@ -78,6 +90,7 @@ export default function Studio() {
     importFile = useRef(null),
     toastTimer = useRef(null),
     alive = useRef(true);
+  const help = useRef(null);
   const erasing = useRef(false),
     lastErase = useRef(null),
     eraserSizeRef = useRef(eraserSize);
@@ -163,6 +176,8 @@ export default function Studio() {
     const isOutput = new URLSearchParams(location.search).has("output");
     setOutput(isOutput);
     setClean(isOutput);
+    if (window.matchMedia("(max-width: 900px)").matches)
+      setInspectorOpen(false);
     outputRef.current = isOutput;
     try {
       const stored = localStorage.getItem("arcwall-scene");
@@ -220,10 +235,13 @@ export default function Studio() {
     if (!ready) return;
     if (!output) channel.current?.postMessage({ type: "scene", scene });
     if (output) return;
+    setSaveStatus("Saving…");
     const timer = setTimeout(() => {
       try {
         localStorage.setItem("arcwall-scene", JSON.stringify(scene));
+        setSaveStatus("Saved on this device");
       } catch {
+        setSaveStatus("Export to save your scene");
         notify("Browser storage is full. Export your scene to keep it.");
       }
     }, 500);
@@ -254,6 +272,7 @@ export default function Studio() {
   useEffect(() => {
     const onKey = (e) => {
       if (
+        help.current?.open ||
         ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) ||
         e.metaKey ||
         e.ctrlKey ||
@@ -433,277 +452,522 @@ export default function Studio() {
       if (blob) download(blob, "arcwall-snapshot.png");
     });
   }
+  function chooseTool(next) {
+    finishStroke();
+    erasing.current = false;
+    lastErase.current = null;
+    setMode(next);
+  }
+  function cornerLayout() {
+    remember();
+    patch(CORNER_LAYOUT);
+    notify("Holograms tucked into the corners. Your drawings are unchanged.");
+  }
+  function saveScene() {
+    download(
+      new Blob([JSON.stringify({ version: 1, scene }, null, 2)], {
+        type: "application/json",
+      }),
+      "arcwall-scene.json",
+    );
+  }
+  function clearBoard() {
+    finishStroke();
+    remember();
+    patch({ strokes: [], shapes: [] });
+    notify("Board cleared. Press Z to undo.");
+  }
   return (
     <>
-      <header>
+      <header className="app-header">
         <a className="brand" href="/">
-          <span className="brandmark">A</span> ARCWALL{" "}
-          <small>PROJECTION STUDIO</small>
+          <span className="brandmark">
+            <Icon name="spark" size={21} />
+          </span>
+          arcwall<span className="brand-tag">STUDIO</span>
         </a>
+        <div className="session-name">
+          <span className="session-divider" />
+          Personal workspace
+          <span className="session-chip">
+            <span className="live-dot" />
+            Local
+          </span>
+        </div>
         <div className="header-right">
-          <span className="live-dot" />
-          <span>SYSTEM ONLINE</span>
+          <button className="header-save" onClick={saveScene}>
+            <Icon name="download" size={15} />
+            Export scene
+          </button>
           <button onClick={launch} className="primary">
-            Launch projector ↗
+            <Icon name="projector" size={16} />
+            Launch projector
+            <Icon name="chevron" size={13} />
           </button>
         </div>
       </header>
-      <main>
-        <aside className="sidebar">
-          <div className="eyebrow">
-            CONTROL DESK <span>01 / LIVE</span>
+      <main className={inspectorOpen ? "" : "inspector-closed"}>
+        <nav className="navigation-rail" aria-label="Studio panels">
+          <div className="rail-top">
+            {[
+              ["scene", "layers", "Scene"],
+              ["vision", "hand", "Vision"],
+              ["objects", "shapes", "Objects"],
+              ["setup", "settings", "Setup"],
+            ].map(([id, icon, label]) => (
+              <button
+                key={id}
+                className={panel === id && inspectorOpen ? "active" : ""}
+                aria-pressed={panel === id && inspectorOpen}
+                onClick={() => {
+                  setPanel(id);
+                  setInspectorOpen(true);
+                }}
+                title={label}
+              >
+                <Icon name={icon} size={20} />
+                <span>{label}</span>
+              </button>
+            ))}
           </div>
-          <h1>
-            Your room.
-            <br />
-            <em>Reimagined.</em>
-          </h1>
-          <p className="intro">Shape light. Build your own interface.</p>
-          <Section number="01" title="Environment" status="LIVE RENDER">
-            <div className="presets">
-              {Object.entries(PRESETS).map(([name, color]) => (
-                <button
-                  key={name}
-                  onClick={() => update("preset", name)}
-                  className={scene.preset === name ? "selected" : ""}
-                >
-                  <i style={{ "--swatch": color }} />
-                  {name === "arc"
-                    ? "Arc blue"
-                    : name === "ember"
-                      ? "Ember"
-                      : "Ghost"}
-                </button>
-              ))}
+          <div className="rail-bottom">
+            <button onClick={launch} title="Launch projector">
+              <Icon name="projector" size={20} />
+              <span>Output</span>
+            </button>
+            <button
+              onClick={() => help.current.showModal()}
+              title="Keyboard shortcuts"
+            >
+              <Icon name="help" size={19} />
+              <span>Help</span>
+            </button>
+            <div className="profile-avatar" title="Local workspace">
+              AW
             </div>
-            <Range
-              label="Light intensity"
-              value={scene.brightness}
-              min={20}
-              max={100}
-              onChange={(v) => update("brightness", v)}
-            />
-            <Range
-              label="Motion speed"
-              value={scene.speed}
-              min={0}
-              max={200}
-              unit="×"
-              onChange={(v) => update("speed", v)}
-            />
-          </Section>
-          <Section number="02" title="Holograms" status="COMPOSE">
-            <div className="toggle-row">
-              {[
-                ["grid", "Spatial grid"],
-                ["sphere", "Reactor core"],
-                ["arm", "Robot arm"],
-                ["telemetry", "Telemetry"],
-              ].map(([key, label]) => (
-                <label key={key}>
+          </div>
+        </nav>
+        <aside className="sidebar" hidden={!inspectorOpen}>
+          <div className="inspector-title">
+            <div>
+              <span className="eyebrow">INSPECTOR</span>
+              <h2>
+                {
+                  {
+                    scene: "Scene",
+                    vision: "Vision controls",
+                    objects: "Objects",
+                    setup: "Workspace",
+                  }[panel]
+                }
+              </h2>
+            </div>
+            <button
+              className="icon-button"
+              aria-label="Close inspector"
+              onClick={() => setInspectorOpen(false)}
+            >
+              <Icon name="panel" size={17} />
+            </button>
+          </div>
+          <div className="inspector-scroll">
+            <div className="inspector-pane" hidden={panel !== "scene"}>
+              <p className="panel-description">
+                A little atmosphere. A lot of possibility.
+              </p>
+              <Section number="" title="Appearance" status="">
+                <div className="presets">
+                  {Object.entries(PRESETS).map(([name, color]) => (
+                    <button
+                      key={name}
+                      onClick={() => update("preset", name)}
+                      className={scene.preset === name ? "selected" : ""}
+                    >
+                      <i style={{ "--swatch": color }} />
+                      {name === "arc"
+                        ? "Arc blue"
+                        : name === "ember"
+                          ? "Ember"
+                          : "Ghost"}
+                      {scene.preset === name && <Icon name="check" size={11} />}
+                    </button>
+                  ))}
+                </div>
+                <Range
+                  label="Light intensity"
+                  value={scene.brightness}
+                  min={20}
+                  max={100}
+                  onChange={(v) => update("brightness", v)}
+                />
+                <Range
+                  label="Motion speed"
+                  value={scene.speed}
+                  min={0}
+                  max={200}
+                  unit="×"
+                  onChange={(v) => update("speed", v)}
+                />
+              </Section>
+              <Section number="" title="Scene layers" status="4 LAYERS">
+                <div className="toggle-row">
+                  {[
+                    ["grid", "Spatial grid"],
+                    ["sphere", "Reactor core"],
+                    ["arm", "Robot arm"],
+                    ["telemetry", "Telemetry"],
+                  ].map(([key, label]) => (
+                    <label key={key}>
+                      <input
+                        type="checkbox"
+                        checked={scene[key]}
+                        onChange={(e) => update(key, e.target.checked)}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </Section>
+              <div className="layout-callout">
+                <Icon name="corners" size={19} />
+                <div>
+                  <strong>Leave room for ideas.</strong>
+                  <p>Keep holograms at the edges.</p>
+                </div>
+                <button
+                  className="icon-button"
+                  title="Apply corner layout"
+                  aria-label="Apply corner layout"
+                  onClick={cornerLayout}
+                >
+                  <Icon name="chevron" size={15} />
+                </button>
+              </div>
+              <Section number="" title="Reactor core" status="">
+                <Range
+                  label="Core scale"
+                  value={scene.scale}
+                  min={40}
+                  max={180}
+                  onChange={(v) => update("scale", v)}
+                />
+                <div className="position-grid">
+                  {["X", "Y"].map((axis) => (
+                    <label key={axis}>
+                      Position {axis}
+                      <input
+                        type="range"
+                        aria-label={`Core ${axis}`}
+                        min={axis === "X" ? 10 : 15}
+                        max={axis === "X" ? 90 : 85}
+                        value={scene["sphere" + axis]}
+                        onChange={(e) =>
+                          update("sphere" + axis, Number(e.target.value))
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+              </Section>
+              <Section number="" title="Robot arm" status="">
+                <Range
+                  label="Arm scale"
+                  value={scene.armScale}
+                  min={30}
+                  max={120}
+                  onChange={(v) => update("armScale", v)}
+                />
+                <div className="position-grid">
+                  {["X", "Y"].map((axis) => (
+                    <label key={axis}>
+                      Position {axis}
+                      <input
+                        type="range"
+                        aria-label={`Arm ${axis}`}
+                        min={axis === "X" ? 5 : 20}
+                        max={axis === "X" ? 95 : 90}
+                        value={scene["arm" + axis]}
+                        onChange={(e) =>
+                          update("arm" + axis, Number(e.target.value))
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+              </Section>
+            </div>
+            <div className="inspector-pane" hidden={panel !== "vision"}>
+              <p className="panel-description">
+                Your hands, part of the interface.
+              </p>
+              <Section
+                number=""
+                title="Hand tracking"
+                status={
+                  cameraState === "on"
+                    ? "LIVE"
+                    : cameraState === "loading"
+                      ? "LOADING"
+                      : "OFFLINE"
+                }
+              >
+                <button
+                  onClick={toggleCamera}
+                  disabled={cameraState === "loading"}
+                  className="wide camera-button"
+                >
+                  <Icon name="camera" size={16} />
+                  {cameraState === "off"
+                    ? "Enable camera"
+                    : cameraState === "loading"
+                      ? "Loading vision model…"
+                      : "Stop camera"}
+                </button>
+                <div id="camera-box" hidden={cameraState === "off"}>
+                  <video ref={video} autoPlay playsInline muted />
+                  <canvas id="hand-preview" ref={preview} />
+                  <span>{gesture}</span>
+                </div>
+                <div className="gesture-guide">
+                  <div>
+                    <span>01</span>
+                    <p>
+                      <strong>Point to aim</strong>Move the cursor with your
+                      index finger.
+                    </p>
+                  </div>
+                  <div>
+                    <span>02</span>
+                    <p>
+                      <strong>Pinch to create</strong>Draw or erase with your
+                      selected tool.
+                    </p>
+                  </div>
+                  <div>
+                    <span>03</span>
+                    <p>
+                      <strong>Spread to resize</strong>Two open hands control
+                      the reactor.
+                    </p>
+                  </div>
+                </div>
+                <label className="switch-label">
                   <input
                     type="checkbox"
-                    checked={scene[key]}
-                    onChange={(e) => update(key, e.target.checked)}
+                    checked={scene.skeleton}
+                    onChange={(e) => update("skeleton", e.target.checked)}
                   />
-                  {label}
+                  Project hand skeleton
                 </label>
-              ))}
+                <Range
+                  label="Pinch sensitivity"
+                  value={scene.sensitivity}
+                  min={15}
+                  max={65}
+                  unit=""
+                  onChange={(v) => update("sensitivity", v)}
+                />
+                <p className="privacy">
+                  Camera processing stays on this device. An internet connection
+                  loads the hand model.
+                </p>
+              </Section>
             </div>
-            <Range
-              label="Core scale"
-              value={scene.scale}
-              min={40}
-              max={180}
-              onChange={(v) => update("scale", v)}
-            />
-            <div className="position-grid">
-              {["X", "Y"].map((axis) => (
-                <label key={axis}>
-                  Core {axis}
-                  <input
-                    type="range"
-                    aria-label={`Core ${axis}`}
-                    min={axis === "X" ? 10 : 15}
-                    max={axis === "X" ? 90 : 85}
-                    value={scene["sphere" + axis]}
-                    onChange={(e) =>
-                      update("sphere" + axis, Number(e.target.value))
-                    }
-                  />
-                </label>
-              ))}
-            </div>
-          </Section>
-          <Section
-            number="03"
-            title="Vision control"
-            status={
-              cameraState === "on"
-                ? "TRACKING"
-                : cameraState === "loading"
-                  ? "LOADING"
-                  : "OFFLINE"
-            }
-          >
-            <button
-              onClick={toggleCamera}
-              disabled={cameraState === "loading"}
-              className="wide"
-            >
-              {cameraState === "off"
-                ? "◎ Enable hand tracking"
-                : cameraState === "loading"
-                  ? "Loading vision model…"
-                  : "◉ Stop camera"}
-            </button>
-            <div id="camera-box" hidden={cameraState === "off"}>
-              <video ref={video} autoPlay playsInline muted />
-              <canvas id="hand-preview" ref={preview} />
-              <span>{gesture}</span>
-            </div>
-            <p className="hint">
-              Point to aim · Pinch to draw
-              <br />
-              Two open hands to resize the core
-            </p>
-            <label className="switch-label">
-              <input
-                type="checkbox"
-                checked={scene.skeleton}
-                onChange={(e) => update("skeleton", e.target.checked)}
+            <div className="inspector-pane" hidden={panel !== "objects"}>
+              <p className="panel-description">
+                Give your space a little structure.
+              </p>
+              <ShapeEditor
+                shapes={scene.shapes}
+                color={scene.ink}
+                onChange={(shapes) => {
+                  remember();
+                  patch({ shapes });
+                }}
               />
-              Project hand skeleton
-            </label>
-            <Range
-              label="Pinch sensitivity"
-              value={scene.sensitivity}
-              min={15}
-              max={65}
-              unit=""
-              onChange={(v) => update("sensitivity", v)}
-            />
-            <p className="privacy">
-              Camera stays on your device. Internet is needed to load the hand
-              model.
-            </p>
-          </Section>
-          <ShapeEditor
-            shapes={scene.shapes}
-            color={scene.ink}
-            onChange={(shapes) => {
-              remember();
-              patch({ shapes });
-            }}
-          />
+            </div>
+            <div className="inspector-pane" hidden={panel !== "setup"}>
+              <p className="panel-description">One laptop. A whole new room.</p>
+              <Section number="" title="Projector output" status="">
+                <p className="hint">
+                  Connect your projector as an extended display. Open the output
+                  window, move it to that display, and press F.
+                </p>
+                <button className="wide" onClick={launch}>
+                  <Icon name="projector" size={16} />
+                  Open projector window
+                </button>
+              </Section>
+              <Section number="" title="Wall alignment" status="">
+                <p className="hint">
+                  Drag four corners in Fit to wall to match the projection to
+                  your surface.
+                </p>
+                <button className="wide" onClick={() => chooseTool("map")}>
+                  <Icon name="map" size={16} />
+                  Fit to wall
+                </button>
+                <button
+                  className="text-button"
+                  onClick={() => {
+                    remember();
+                    patch({ quad: IDENTITY_QUAD });
+                  }}
+                >
+                  Reset alignment
+                </button>
+              </Section>
+              <Section number="" title="Your scene" status="LOCAL">
+                <div className="file-actions">
+                  <button onClick={saveScene}>
+                    <Icon name="download" size={15} />
+                    Export scene
+                  </button>
+                  <button onClick={() => importFile.current.click()}>
+                    <Icon name="upload" size={15} />
+                    Import scene
+                  </button>
+                  <button onClick={snapshot}>
+                    <Icon name="camera" size={15} />
+                    Save snapshot
+                  </button>
+                </div>
+                <p className="privacy">
+                  Your scene autosaves in this browser. Export a copy to keep it
+                  or move to another laptop.
+                </p>
+              </Section>
+            </div>
+          </div>
+          <div className="inspector-footer">
+            <span className="live-dot" />
+            Everything starts with an idea.
+          </div>
         </aside>
         <div className="workspace">
           <div className="workspace-top">
-            <div>
-              <span className="live-dot" /> LIVE CANVAS{" "}
-              <span className="subtle">/ 1920 × 1080</span>
+            <div className="workspace-title">
+              <div className="eyebrow">YOUR CREATIVE SPACE</div>
+              <h1>
+                {scene.board ? "Drawing board" : "Spatial canvas"}
+                <span className="title-dot">.</span>
+              </h1>
             </div>
-            <div id="fps">{fps} FPS</div>
+            <div className="view-switch" aria-label="Canvas view">
+              <button
+                className={!scene.board ? "selected" : ""}
+                onClick={() => update("board", false)}
+              >
+                <Icon name="layers" size={14} />
+                Studio
+              </button>
+              <button
+                className={scene.board ? "selected" : ""}
+                onClick={() => update("board", true)}
+              >
+                <Icon name="board" size={14} />
+                Drawing board
+              </button>
+            </div>
+            <div className="workspace-status">
+              <span className="render-status">
+                <span className="live-dot" />
+                Live
+                <span className="status-divider" />
+                {fps} fps
+              </span>
+              <button
+                className={"icon-button " + (!inspectorOpen ? "selected" : "")}
+                title="Toggle inspector"
+                aria-label="Toggle inspector"
+                onClick={() => setInspectorOpen((v) => !v)}
+              >
+                <Icon name="panel" size={17} />
+              </button>
+            </div>
           </div>
-          <div id="stage-wrap">
-            <div
-              id="stage"
-              ref={stage}
-              onPointerDown={down}
-              onPointerMove={move}
-              onPointerUp={up}
-              onPointerCancel={up}
-              onLostPointerCapture={up}
-              onPointerLeave={() => {
+          <div className="viewport">
+            <ProjectionStage
+              scene={scene}
+              stageSize={stageSize}
+              canvasRef={canvas}
+              stageRef={stage}
+              onDown={down}
+              onMove={move}
+              onUp={up}
+              onLeave={() => {
                 if (!pointerDown.current && cameraState !== "on")
                   interaction.current.pointer = null;
               }}
-            >
-              <canvas
-                ref={canvas}
-                id="scene"
-                width={1920}
-                height={1080}
-                style={{
-                  transformOrigin: "0 0",
-                  transform: cssHomography(scene.quad, ...stageSize),
-                }}
-                aria-label="Interactive holographic projection canvas"
-              />
-              <svg id="mapping" viewBox="0 0 1920 1080">
-                <polygon
-                  id="quad-outline"
-                  points={scene.quad
-                    .map(([x, y]) => `${x * 1920},${y * 1080}`)
-                    .join(" ")}
-                />
-                {scene.quad.map(([x, y], i) => (
-                  <g key={i}>
-                    <circle
-                      className="map-handle"
-                      cx={clamp(x * 1920, 15, 1905)}
-                      cy={clamp(y * 1080, 15, 1065)}
-                      r={15}
-                    />
-                    <text
-                      x={clamp(x * 1920 + 25, 20, 1830)}
-                      y={clamp(y * 1080 + 35, 35, 1040)}
-                    >
-                      0{i + 1}
-                    </text>
-                  </g>
-                ))}
-              </svg>
-              {output && outputPrompt && (
-                <div id="output-start">
-                  <button onClick={fullscreen} className="primary">
-                    Enter fullscreen
-                  </button>
-                  <span>
-                    Move this window to your projector · press F for fullscreen
-                  </span>
-                  <button onClick={() => setOutputPrompt(false)}>
-                    Dismiss
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="canvas-footer">
-            <span>
-              <i className="live-dot" />{" "}
+              output={output}
+              outputPrompt={outputPrompt}
+              onFullscreen={fullscreen}
+              onDismiss={() => setOutputPrompt(false)}
+            />
+            <div className="canvas-label">
+              <span className="canvas-label-dot" />
               {mode === "map"
-                ? "DRAG THE FOUR CORNERS TO ALIGN"
-                : "READY TO PROJECT"}
-            </span>
-            <span>
-              HOLD & DRAG TO DRAW <kbd>D</kbd> DRAW <kbd>M</kbd> MAP{" "}
-              <kbd>H</kbd> HIDE UI
-            </span>
-          </div>
-          <div className="tools">
-            <div className="tool-group">
+                ? "ALIGN SURFACE"
+                : mode === "erase"
+                  ? "ERASER ACTIVE"
+                  : scene.board
+                    ? "OPEN CANVAS"
+                    : "LIVE PROJECTION"}
+              <span>1920 × 1080</span>
+            </div>
+            <div className="viewport-actions">
               <button
-                className={mode === "draw" ? "selected" : ""}
-                onClick={() => {
-                  finishStroke();
-                  setMode("draw");
-                }}
+                className="icon-button"
+                onClick={() => update("paused", !scene.paused)}
+                aria-label={
+                  scene.paused ? "Resume animation" : "Pause animation"
+                }
+                title={scene.paused ? "Resume animation" : "Pause animation"}
               >
-                ✎ Draw
+                <Icon name={scene.paused ? "play" : "pause"} size={15} />
               </button>
               <button
-                className={mode === "erase" ? "selected" : ""}
-                onClick={() => {
-                  finishStroke();
-                  setMode("erase");
-                }}
+                className="icon-button"
+                aria-label="Save snapshot"
+                title="Save snapshot"
+                onClick={snapshot}
               >
-                ◌ Erase
+                <Icon name="camera" size={16} />
               </button>
+            </div>
+            <div className="tools" role="toolbar" aria-label="Drawing tools">
+              <div className="tool-group">
+                <button
+                  className={mode === "draw" ? "selected" : ""}
+                  onClick={() => chooseTool("draw")}
+                  title="Draw (D)"
+                  aria-pressed={mode === "draw"}
+                >
+                  <Icon name="pen" size={16} />
+                  <span>Draw</span>
+                </button>
+                <button
+                  className={mode === "erase" ? "selected" : ""}
+                  onClick={() => chooseTool("erase")}
+                  title="Erase (E)"
+                  aria-pressed={mode === "erase"}
+                >
+                  <Icon name="eraser" size={17} />
+                  <span>Erase</span>
+                </button>
+              </div>
+              <span className="tool-divider" />
+              <label className="ink-label" title="Ink color">
+                <input
+                  aria-label="Ink color"
+                  type="color"
+                  value={scene.ink}
+                  onChange={(e) => update("ink", e.target.value)}
+                />
+              </label>
               {mode === "erase" && (
                 <label className="eraser-size">
-                  SIZE
+                  <span>Size</span>
                   <input
                     aria-label="Eraser size"
                     type="range"
@@ -714,57 +978,50 @@ export default function Studio() {
                   />
                 </label>
               )}
+              <span className="tool-divider" />
+              <div className="tool-group">
+                <button
+                  className="icon-button"
+                  onClick={undo}
+                  aria-label="Undo"
+                  title="Undo (Z)"
+                >
+                  <Icon name="undo" size={17} />
+                </button>
+                <button
+                  className="icon-button danger-button"
+                  onClick={clearBoard}
+                  aria-label="Clear board"
+                  title="Clear board"
+                >
+                  <Icon name="trash" size={16} />
+                </button>
+              </div>
+              <span className="tool-divider" />
               <button
-                className={mode === "map" ? "selected" : ""}
-                onClick={() => {
-                  finishStroke();
-                  setMode("map");
-                }}
+                className={"icon-button " + (mode === "map" ? "selected" : "")}
+                onClick={() => chooseTool("map")}
+                aria-label="Fit to wall"
+                title="Fit to wall (M)"
               >
-                ⌗ Fit to wall
+                <Icon name="map" size={18} />
               </button>
-              <button onClick={undo}>↶ Undo</button>
               <button
-                onClick={() => {
-                  remember();
-                  stroke.current = null;
-                  interaction.current.activeStroke = null;
-                  patch({ strokes: [], shapes: [] });
-                }}
+                className="icon-button"
+                aria-label={focus ? "Exit expanded canvas" : "Expand canvas"}
+                onClick={() => setFocus((v) => !v)}
+                title={focus ? "Exit expanded canvas (Esc)" : "Expand canvas"}
               >
-                Clear board
+                <Icon name={focus ? "collapse" : "expand"} size={17} />
               </button>
             </div>
-            <div className="tool-group">
-              <label className="ink-label">
-                INK{" "}
-                <input
-                  aria-label="Ink color"
-                  type="color"
-                  value={scene.ink}
-                  onChange={(e) => update("ink", e.target.value)}
-                />
-              </label>
-              <button onClick={() => update("paused", !scene.paused)}>
-                {scene.paused ? "▷ Play" : "Ⅱ Pause"}
-              </button>
-              <button onClick={snapshot}>↓ Snapshot</button>
-              <button
-                className={scene.board ? "selected" : ""}
-                onClick={() => {
-                  finishStroke();
-                  const board = !scene.board;
-                  update("board", board);
-                  setFocus(board);
-                  setMode("draw");
-                }}
-              >
-                {scene.board ? "◧ Studio scene" : "▧ Drawing board"}
-              </button>
-              <button onClick={() => setFocus((v) => !v)}>
-                {focus ? "↙ Exit expanded" : "⤢ Expand"}
-              </button>
-            </div>
+            {mode === "map" && (
+              <div className="mapping-tip">
+                <Icon name="map" size={15} />
+                Drag each corner to fit your wall.
+                <button onClick={() => chooseTool("draw")}>Done</button>
+              </div>
+            )}
           </div>
           <AgentPanel
             scene={scene}
@@ -775,76 +1032,69 @@ export default function Studio() {
             }}
             notify={notify}
           />
-          <div className="bottom-cards">
-            <article>
-              <div className="card-number">01 — OUTPUT</div>
-              <h3>A wall becomes a workspace.</h3>
-              <p>
-                Connect your projector as an extended display. Launch the
-                output, move it across, and go fullscreen.
-              </p>
-            </article>
-            <article>
-              <div className="card-number">02 — ALIGN</div>
-              <h3>Make the light fit.</h3>
-              <p>
-                Choose Fit to wall and drag the four corner handles. Adjustments
-                appear on the projector instantly.
-              </p>
-              <button
-                className="text-button"
-                onClick={() => {
-                  remember();
-                  patch({ quad: IDENTITY_QUAD });
-                }}
-              >
-                Reset alignment ↗
+          <div className="workspace-footer">
+            <span>
+              <Icon name="check" size={12} />
+              {saveStatus}
+            </span>
+            <span>
+              <kbd>D</kbd>Draw<kbd>E</kbd>Erase<kbd>Space</kbd>Pause
+              <button onClick={() => help.current.showModal()}>
+                All shortcuts
+                <Icon name="chevron" size={11} />
               </button>
-            </article>
-            <article>
-              <div className="card-number">03 — KEEP</div>
-              <h3>Save your setup.</h3>
-              <p>
-                Your scene saves in this browser. Export a file to keep a copy
-                or move to another laptop.
-              </p>
-              <button
-                className="text-button"
-                onClick={() =>
-                  download(
-                    new Blob([JSON.stringify({ version: 1, scene }, null, 2)], {
-                      type: "application/json",
-                    }),
-                    "arcwall-scene.json",
-                  )
-                }
-              >
-                Export scene ↗
-              </button>
-              <button
-                className="text-button"
-                onClick={() => importFile.current.click()}
-              >
-                Import ↗
-              </button>
-              <input
-                ref={importFile}
-                type="file"
-                accept="application/json,.json"
-                hidden
-                onChange={loadFile}
-              />
-            </article>
+            </span>
           </div>
+          <input
+            ref={importFile}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={loadFile}
+          />
         </div>
       </main>
+      <dialog ref={help} className="shortcuts-dialog">
+        <div className="dialog-heading">
+          <div>
+            <span className="eyebrow">MAKE IT SECOND NATURE</span>
+            <h2>A few handy shortcuts.</h2>
+          </div>
+          <button
+            className="icon-button"
+            aria-label="Close shortcuts"
+            onClick={() => help.current.close()}
+          >
+            <Icon name="close" />
+          </button>
+        </div>
+        <div className="shortcut-list">
+          {[
+            ["D", "Draw"],
+            ["E", "Erase"],
+            ["M", "Fit to wall"],
+            ["B", "Drawing board & expand"],
+            ["Z", "Undo"],
+            ["Space", "Pause animation"],
+            ["F", "Fullscreen"],
+            ["H", "Hide interface"],
+            ["Esc", "Leave expanded canvas"],
+          ].map(([key, label]) => (
+            <div key={key}>
+              <span>{label}</span>
+              <kbd>{key}</kbd>
+            </div>
+          ))}
+        </div>
+        <p>Point to aim. Pinch to draw. The rest is up to you.</p>
+      </dialog>
       <div
         id="toast"
         className={toast ? "show" : ""}
         role="status"
         aria-live="polite"
       >
-        {toast}
+        {toast && <Icon name="check" size={15} />} {toast}
       </div>
     </>
   );

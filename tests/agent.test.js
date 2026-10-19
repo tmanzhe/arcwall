@@ -5,7 +5,7 @@ import { DEFAULT_SCENE, applySceneEdit } from "../src/scene.js";
 test("local commands work without claiming to interpret drawings", () => {
   assert.deepEqual(
     localCommand("make the core bigger and turn it amber", DEFAULT_SCENE).edit,
-    { preset: "ember", scale: 125 },
+    { preset: "ember", scale: DEFAULT_SCENE.scale + 25 },
   );
   assert.equal(localCommand("what did I draw?", DEFAULT_SCENE), null);
 });

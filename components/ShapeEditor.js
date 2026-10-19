@@ -19,7 +19,7 @@ export default function ShapeEditor({ shapes, onChange, color }) {
     <section>
       <div className="section-heading">
         <h2>
-          04 <span>Scene shapes</span>
+          <span>Scene shapes</span>
         </h2>
         <span>{shapes.length} / 40</span>
       </div>

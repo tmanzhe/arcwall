@@ -2,13 +2,15 @@
 import { useEffect, useRef, useState } from "react";
 import { localCommand } from "../src/agent.js";
 import { applySceneEdit } from "../src/scene.js";
+import Icon from "./Icon";
 export default function AgentPanel({ scene, canvas, onEdit, notify }) {
   const [configured, setConfigured] = useState(false),
     [prompt, setPrompt] = useState(""),
     [attach, setAttach] = useState(false),
     [busy, setBusy] = useState(false),
     [messages, setMessages] = useState([]),
-    [pending, setPending] = useState(null);
+    [pending, setPending] = useState(null),
+    [expanded, setExpanded] = useState(false);
   const latest = useRef(scene);
   latest.current = scene;
   useEffect(() => {
@@ -23,6 +25,7 @@ export default function AgentPanel({ scene, canvas, onEdit, notify }) {
     const text = prompt.trim();
     setPrompt("");
     setPending(null);
+    setExpanded(true);
     setMessages((m) => [...m.slice(-11), { role: "user", text }]);
     if (!configured) {
       const result = localCommand(text, latest.current);
@@ -75,22 +78,25 @@ export default function AgentPanel({ scene, canvas, onEdit, notify }) {
     }
   }
   return (
-    <section className="agent-panel">
+    <section className={"agent-panel " + (expanded ? "expanded" : "compact")}>
       <div className="agent-heading">
         <div>
-          <span className="live-dot" />
-          <strong>Scene intelligence</strong>
+          <Icon name="spark" size={18} />
+          <strong>Arc assistant</strong>
           <span className="agent-badge">
             {configured ? "AI CONNECTED" : "LOCAL COMMANDS"}
           </span>
         </div>
-        <span className="agent-caption">
-          {configured
-            ? "Canvas-aware collaboration"
-            : "No API key needed to experiment"}
-        </span>
+        <button
+          className="icon-button agent-toggle"
+          aria-label={expanded ? "Collapse assistant" : "Expand assistant"}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <Icon name="chevron" size={14} />
+        </button>
       </div>
-      {messages.length > 0 && (
+      {expanded && messages.length > 0 && (
         <div className="agent-messages" aria-live="polite">
           {messages.slice(-4).map((m, i) => (
             <div key={i} className={m.role}>
@@ -101,7 +107,7 @@ export default function AgentPanel({ scene, canvas, onEdit, notify }) {
           {busy && <p className="thinking">Reading the scene…</p>}
         </div>
       )}
-      {pending && (
+      {expanded && pending && (
         <div className="agent-proposal">
           <span>
             Proposed changes:{" "}
@@ -122,7 +128,6 @@ export default function AgentPanel({ scene, canvas, onEdit, notify }) {
         </div>
       )}
       <form onSubmit={send}>
-        <span className="prompt-icon">✧</span>
         <input
           aria-label="Scene command"
           value={prompt}
@@ -142,7 +147,7 @@ export default function AgentPanel({ scene, canvas, onEdit, notify }) {
               : "Send ↗"}
         </button>
       </form>
-      <div className="agent-bottom">
+      <div className="agent-bottom" hidden={!expanded && !configured}>
         <label>
           <input
             type="checkbox"

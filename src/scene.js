@@ -109,6 +109,9 @@ export function applySceneEdit(scene, edit) {
     "scale",
     "sphereX",
     "sphereY",
+    "armX",
+    "armY",
+    "armScale",
   ];
   const patch = Object.fromEntries(
     Object.entries(edit || {}).filter(([k]) => allowed.includes(k)),

@@ -37,12 +37,13 @@ test("tracking loss ends a stroke and resets the pointer", () => {
   });
 });
 test("two open hands resize relative to the initial span and clamp scale", () => {
+  const scene = { ...DEFAULT_SCENE, scale: 100 };
   const g = new GestureInterpreter();
   const a = hand(0.2),
     b = hand(0.6);
-  assert.equal(g.interpret([a, b], DEFAULT_SCENE).scale, 100);
-  const r = g.interpret([a, hand(0.8)], DEFAULT_SCENE);
+  assert.equal(g.interpret([a, b], scene).scale, 100);
+  const r = g.interpret([a, hand(0.8)], scene);
   assert.ok(Math.abs(r.scale - 150) < 1e-7);
   assert.equal(r.pinching, false);
-  assert.equal(g.interpret([hand(0), hand(1)], DEFAULT_SCENE).scale, 180);
+  assert.equal(g.interpret([hand(0), hand(1)], scene).scale, 180);
 });

@@ -381,8 +381,6 @@ export class Renderer {
       c.fillRect(75 + i * 7, 307 - h, 3, h);
     }
     this.text(c, "SIGNAL / 08.24", 75, 332, 10, 0.4);
-    this.text(c, "SCENE RECONSTRUCTION", 1530, 88, 12, 0.6);
-    this.text(c, "ONLINE", 1735, 115, 18, 0.9);
     const y = 920;
     c.globalAlpha = this.brightness * 0.25;
     this.line(c, [

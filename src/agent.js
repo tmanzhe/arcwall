@@ -5,6 +5,9 @@ export const EDIT_RANGES = {
   scale: [40, 180],
   sphereX: [10, 90],
   sphereY: [15, 85],
+  armX: [5, 95],
+  armY: [20, 90],
+  armScale: [30, 120],
 };
 export function validateEdit(raw) {
   const edit = {};

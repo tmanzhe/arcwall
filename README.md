@@ -20,8 +20,8 @@ Open **http://127.0.0.1:8787**. The projection studio and local commands work wi
 ## Try it in two minutes
 
 1. Draw directly on the live canvas. Pick an ink color, use **Erase** to cut through strokes, and **Undo** to restore an edit.
-2. Select **Drawing board** for a clear grid with more drawing space. **Expand** fills the workspace while keeping the toolbar available. Press **Escape** to return to the control desk.
-3. Customize the reactor's position and size, switch color palettes, and add rectangle or ellipse outlines from **Scene shapes**.
+2. Select **Drawing board** for a clear grid. Use **Expand canvas** in the floating drawing dock to fill the workspace while keeping the tools available. Press **Escape** to return to the control desk.
+3. Use the left navigation rail to open **Scene**, **Vision**, **Objects**, or **Setup** in the right inspector. Customize the reactor and arm, switch palettes, and add rectangle or ellipse outlines in **Objects**. Close the inspector for a wider canvas.
 4. Try a local command: **“make the core bigger and turn it amber”**, **“hide the grid”**, or **“add a circle”**. These commands use a small deterministic parser, not an AI model.
 5. Enable hand tracking, allow camera access, and hold your hand where the webcam can see it. Point to aim, pinch to draw or erase, and spread two open hands to resize the reactor.
 
@@ -30,8 +30,10 @@ Open **http://127.0.0.1:8787**. The projection studio and local commands work wi
 1. Connect the projector to your laptop and select **extended display** in your operating system.
 2. Click **Launch projector**. Move the new window to the projector display and press **F** for fullscreen.
 3. Keep the control desk on the laptop. Changes and live ink are shared with the output window using `BroadcastChannel`; there is no screen capture or network video stream.
-4. Choose **Fit to wall** and drag the four corner handles in the laptop preview. The application computes a perspective transform so the image fits a convex quadrilateral on the wall. Keep the projector still after alignment.
+4. Choose **Fit to wall** in the floating toolbar and drag the four corner handles in the laptop preview. The application computes a perspective transform so the image fits a convex quadrilateral on the wall. Keep the projector still after alignment.
 5. If pop-ups are blocked, allow them for the local app. Both windows must use the same browser profile and exact origin (`127.0.0.1:8787`, not a mixture of `localhost` and `127.0.0.1`).
+
+The **Corner layout** action in the Scene inspector tucks the reactor into the upper-right and the arm into the lower-left, preserving ink, shapes, and wall alignment. Both objects have independent position and scale controls.
 
 The renderer uses a 1920 × 1080 drawing surface and preserves its aspect ratio in the output. A flat wall, a small projection area, and a dark room make a good first setup.
 
@@ -40,7 +42,7 @@ The renderer uses a 1920 × 1080 drawing surface and preserves its aspect ratio 
 | Area              | Current behavior                                                                                              |
 | ----------------- | ------------------------------------------------------------------------------------------------------------- |
 | Holographic scene | Procedural wireframe sphere with orbiting rings, articulated arm, animated grid, decorative telemetry         |
-| Control desk      | Palette, intensity, motion speed, core scale and position, layer toggles                                      |
+| Control desk      | Tabbed inspector, palette, intensity, motion speed, core and arm transforms, corner layout, layer toggles     |
 | Drawing           | Mouse/touch ink, adjustable eraser, stroke splitting, undo, clear board, expanded board mode                  |
 | Scene shapes      | Add, label, position, resize, recolor, and remove rectangles and ellipses                                     |
 | Wall fitting      | Four-point perspective mapping with crossed/degenerate corner rejection and inverse pointer mapping           |
