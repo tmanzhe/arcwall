@@ -321,6 +321,15 @@ export default function Studio() {
     };
   }, [clean, output, mode, focus]);
   useEffect(() => {
+    if (
+      scene.workspace === "mapping" &&
+      (mode === "draw" || mode === "erase")
+    ) {
+      finishStroke();
+      setMode("interact");
+    }
+  }, [scene.workspace, mode, finishStroke]);
+  useEffect(() => {
     interaction.current.eraser = mode === "erase" ? eraserSize : null;
   }, [mode, eraserSize]);
   useEffect(() => {

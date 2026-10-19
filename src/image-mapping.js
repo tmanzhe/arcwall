@@ -175,7 +175,7 @@ export class ImageMappingRenderer {
         (m.zoom / 100) *
         (m.motion === "push" ? 1 + Math.sin(phase) * m.amount * 0.005 : 1),
       dx = m.motion === "drift" ? Math.sin(phase) * m.amount * 2 : 0,
-      dy = m.motion === "drift" ? Math.cos(phase * 0.7) * m.amount : 0,
+      dy = m.motion === "drift" ? Math.cos(phase) * m.amount : 0,
       cx = 960 + m.offsetX * 1920 + dx,
       cy = 540 + m.offsetY * 1080 + dy;
     c.save();
@@ -202,8 +202,7 @@ export class ImageMappingRenderer {
       return;
     }
     const yaw = m.motion === "orbit" ? Math.sin(phase) * m.amount * 0.012 : 0,
-      pitch =
-        m.motion === "orbit" ? Math.cos(phase * 0.7) * m.amount * 0.004 : 0,
+      pitch = m.motion === "orbit" ? Math.cos(phase) * m.amount * 0.004 : 0,
       cos = Math.cos(yaw),
       sin = Math.sin(yaw),
       cp = Math.cos(pitch),
